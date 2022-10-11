@@ -38,8 +38,8 @@ public class SqlQueryBuilder {
         if (null != dq.getState()) {
             query = query.concat(statusQuery);
         }
-        LOG.info("fromTs:"+dq.getFromTs());
-        LOG.info("toTs:"+dq.getToTs());
+        LOG.debug("fromTs:"+dq.getFromTs());
+        LOG.debug("toTs:"+dq.getToTs());
         if (null != dq.getFromTs() && null != dq.getToTs()) {
             query = query.concat(wherePart);
         }

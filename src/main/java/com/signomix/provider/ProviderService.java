@@ -51,7 +51,7 @@ public class ProviderService {
         authDao=new AuthDao();
         authDao.setDatasource(ds2);
         try{
-            LOG.info("requestLimitConfigured"+requestLimitConfigured);
+            LOG.info("requestLimitConfigured:"+requestLimitConfigured);
             int requestLimit=Integer.parseInt(requestLimitConfigured);
             dataDao.setQueryResultsLimit(requestLimit);
         }catch(Exception e){

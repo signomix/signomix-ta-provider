@@ -42,6 +42,7 @@ public class IotDatabaseDao implements IotDatabaseIface {
     @Override
     public void setQueryResultsLimit(int limit){
         requestLimit=limit;
+        LOG.info("requestLimit:"+requestLimit);
     }
 
     @Override
