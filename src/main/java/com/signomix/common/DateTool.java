@@ -3,19 +3,39 @@ package com.signomix.common;
 import java.sql.Timestamp;
 import java.time.DateTimeException;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import org.jboss.logging.Logger;
 
 public class DateTool {
+    private static final Logger LOG = Logger.getLogger(DateTool.class);
+
     public static Timestamp parseTimestamp(String input, String secondaryInput, boolean useSystemTimeOnError) {
+        if (null == input || input.isEmpty()) {
+            return null;
+        }
         String timeString = input.replace('~', '+');
         Timestamp ts = null;
         if (input.startsWith("-")) {
             int multiplicand = 1;
-            long millis = Long.parseLong(input.substring(1, input.length() - 1));
-            switch (input.charAt(input.length() - 1)) {
+            int zonePosition = input.indexOf("-", 1);
+            char unitSymbol;
+            long millis;
+            String zoneId = "";
+            if (zonePosition == -1) {
+                millis = Long.parseLong(input.substring(1, input.length() - 1));
+                unitSymbol = input.charAt(input.length() - 1);
+            } else {
+                millis = Long.parseLong(input.substring(1, 2));
+                unitSymbol = input.charAt(2);
+                zoneId = input.substring(zonePosition + 1).replaceFirst("\\.", "/");
+            }
+            switch (unitSymbol) {
                 case 'd':
                     multiplicand = 86400 * 1000;
                     break;
@@ -28,8 +48,15 @@ public class DateTool {
                 default: // seconds
                     multiplicand = 1000;
             }
-            ts = new Timestamp(System.currentTimeMillis() - millis * multiplicand);
-            return ts;
+            if (millis == 0 && multiplicand == 86400 * 1000) {
+                ts = new Timestamp(getStartOfDayAsUTC(zoneId));
+                return ts;
+            } else if (millis == 0 && multiplicand != 86400 * 1000) {
+                // cannot be parsed (parsing error) - actual timestamp will be returned
+            } else {
+                ts = new Timestamp(System.currentTimeMillis() - millis * multiplicand);
+                return ts;
+            }
         } else {
             try {
                 ts = new Timestamp(Long.parseLong(timeString));
@@ -58,7 +85,11 @@ public class DateTool {
             } catch (Exception e4) {
             }
         }
-        return new Timestamp(System.currentTimeMillis());
+        if (useSystemTimeOnError) {
+            return new Timestamp(System.currentTimeMillis());
+        } else {
+            return new Timestamp(0);
+        }
     }
 
     private static Timestamp getTimestamp(String input, String pattern)
@@ -67,5 +98,15 @@ public class DateTool {
         ZonedDateTime zdtInstanceAtOffset = ZonedDateTime.parse(input, formatter);
         ZonedDateTime zdtInstanceAtUTC = zdtInstanceAtOffset.withZoneSameInstant(ZoneOffset.UTC);
         return Timestamp.from(zdtInstanceAtUTC.toInstant());
+    }
+
+    public static long getStartOfDayAsUTC(String zoneId) {
+        long result;
+        LocalDate localDate = LocalDate.now(ZoneId.of(zoneId));
+        ZonedDateTime startOfDayInEurope2 = localDate.atTime(LocalTime.MIN)
+                .atZone(ZoneId.of(zoneId));
+        long offset = startOfDayInEurope2.getOffset().getTotalSeconds() * 1000;
+        result=Timestamp.valueOf(startOfDayInEurope2.toLocalDateTime()).getTime() - offset;
+        return result;
     }
 }

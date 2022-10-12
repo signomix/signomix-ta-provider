@@ -29,7 +29,7 @@ public class SqlQueryBuilder {
         }
         String projectQuery = " and project=?";
         String statusQuery = " and state=?";
-        String wherePart = " and tstamp>=? and tstamp<=?";
+        String wherePart = " and tstamp between ? and ?";
         String orderPart = " order by tstamp desc limit ?";
         query = defaultQuery;
         if (null != dq.getProject()) {
