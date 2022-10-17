@@ -7,11 +7,9 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Observes;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
@@ -22,7 +20,6 @@ import com.signomix.common.iot.ChannelData;
 import com.signomix.common.iot.virtual.VirtualData;
 
 import io.agroal.api.AgroalDataSource;
-import io.quarkus.runtime.StartupEvent;
 
 public class IotDatabaseDao implements IotDatabaseIface {
     private static final Logger LOG = Logger.getLogger(IotDatabaseDao.class);
@@ -421,6 +418,243 @@ public class IotDatabaseDao implements IotDatabaseIface {
             }
         } catch (SQLException e) {
             throw new IotDatabaseException(IotDatabaseException.SQL_EXCEPTION, e.getMessage(), e);
+        }
+    }
+
+    public List<String> getGroupChannels(String groupEUI) throws IotDatabaseException {
+        List<String> channels;
+        // return ((Service) Kernel.getInstance()).getDataStorageAdapter().
+        String query = "select channels from groups where eui=?";
+        channels = new ArrayList<>();
+        try (Connection conn = dataSource.getConnection(); PreparedStatement pst = conn.prepareStatement(query);) {
+            pst.setString(1, groupEUI);
+            ResultSet rs = pst.executeQuery();
+            if (rs.next()) {
+                String[] s = rs.getString(1).toLowerCase().split(",");
+                channels = Arrays.asList(s);
+            }
+            return channels;
+        } catch (SQLException e) {
+            throw new IotDatabaseException(IotDatabaseException.SQL_EXCEPTION, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Get last registered measuresfrom groupDevices dedicated to the specified
+     * group
+     *
+     * @param userID
+     * @param groupEUI
+     * @param channelNames
+     * @return
+     * @throws ThingsDataException
+     */
+    public List<List<List>> getValuesOfGroup(String userID, long organizationID, String groupEUI, String[] channelNames,
+            long interval,
+            String dataQuery)
+            throws IotDatabaseException {
+        DataQuery dq;
+        if (dataQuery.isEmpty()) {
+            dq = new DataQuery();
+            dq.setFromTs("-" + interval + "s");
+        } else {
+            try {
+                dq = DataQuery.parse(dataQuery);
+            } catch (DataQueryException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+                return new ArrayList<>();
+            }
+        }
+        // return getGroupLastValues(userID, groupEUI, channelNames, interval);
+        return getGroupLastValues(userID, organizationID, groupEUI, channelNames, dq);
+    }
+
+    public List<List<List>> getValuesOfGroup(String userID, long organizationID, String groupEUI, String[] channelNames,
+            long interval,
+            DataQuery dataQuery)
+            throws IotDatabaseException {
+        // return getGroupLastValues(userID, groupEUI, channelNames, interval);
+        return getGroupLastValues(userID, organizationID, groupEUI, channelNames, dataQuery);
+    }
+
+    public List<List<List>> getGroupLastValues(String userID, long organizationID, String groupEUI,
+            String[] channelNames, DataQuery dQuery)
+            throws IotDatabaseException {
+        List<String> requestChannels = null;
+        if (null == dQuery.getChannelName() || dQuery.getChannelName().isEmpty()) {
+            String cNames = "";
+            for (int i = 0; i < channelNames.length; i++) {
+                cNames = cNames.concat(channelNames[i]);
+                if (i < channelNames.length - 1) {
+                    cNames = cNames.concat(",");
+                }
+            }
+            dQuery.setChannelName(cNames);
+        }
+
+        requestChannels = Arrays.asList(channelNames);
+        if (null != dQuery.getChannelName()) {
+            requestChannels = dQuery.getChannels();
+        }
+        String group = "%," + groupEUI + ",%";
+        String deviceQuery = "SELECT eui,channels FROM devices WHERE groups like ?;";
+        ArrayList<String> devices = new ArrayList<>();
+        ArrayList<List> channels = new ArrayList<>();
+        // String query = buildGroupDataQuery(dQuery);
+        // logger.info("query with DataQuery: " + query);
+        List<String> groupChannels = getGroupChannels(groupEUI);
+        if (requestChannels.size() == 0) {
+            //logger.error("empty channelNames");
+            requestChannels = groupChannels;
+        }
+        List<List<List>> result = new ArrayList<>();
+        List<List> measuresForEui = new ArrayList<>();
+        List<ChannelData> measuresForEuiTimestamp = new ArrayList<>();
+        List<ChannelData> tmpResult = new ArrayList<>();
+        ChannelData cd;
+        try (Connection conn = dataSource.getConnection();
+                PreparedStatement pstd = conn.prepareStatement(deviceQuery);) {
+            pstd.setString(1, group);
+            ResultSet rs = pstd.executeQuery();
+            while (rs.next()) {
+                devices.add(rs.getString(1));
+                channels.add(Arrays.asList(rs.getString(2).split(",")));
+            }
+            for (int k = 0; k < devices.size(); k++) {
+                result.add(getValues(userID, devices.get(k), 1, dQuery));
+            }
+            return result;
+        } catch (SQLException e) {
+            //logger.error(e.getMessage());
+            throw new IotDatabaseException(IotDatabaseException.SQL_EXCEPTION, e.getMessage(), e);
+        } catch (Exception ex) {
+            //olgger.error(ex.getMessage());
+            throw new IotDatabaseException(IotDatabaseException.UNKNOWN, ex.getMessage());
+        }
+    }
+
+    public List<List<List>> getGroupLastValues(String userID, long organizationID, String groupEUI,
+            String[] channelNames, long secondsBack)
+            throws IotDatabaseException {
+        List<String> requestChannels = Arrays.asList(channelNames);
+        try {
+            String group = "%," + groupEUI + ",%";
+            long timestamp = System.currentTimeMillis() - secondsBack;
+            String deviceQuery = "SELECT eui,channels FROM devices WHERE groups like ?;";
+            HashMap<String, List> devices = new HashMap<>();
+            String query;
+            query = "SELECT "
+                    + "eui,userid,day,dtime,tstamp,d1,d2,d3,d4,d5,d6,d7,d8,d9,d10,d11,d12,d13,d14,d15,d16,d17,d18,d19,d20,d21,d22,d23,d24 "
+                    + "FROM devicedata "
+                    + "WHERE eui IN "
+                    + "(SELECT eui FROM devices WHERE groups like ?) "
+                    + "and (tstamp>?) "
+                    + "order by eui,tstamp desc;";
+            List<String> groupChannels = getGroupChannels(groupEUI);
+            if (requestChannels.size() == 0) {
+                //logger.error("empty channelNames");
+                requestChannels = groupChannels;
+            }
+            List<List<List>> result = new ArrayList<>();
+            List<List> measuresForEui = new ArrayList<>();
+            List<ChannelData> measuresForEuiTimestamp = new ArrayList<>();
+            List<ChannelData> tmpResult = new ArrayList<>();
+            ChannelData cd;
+            //logger.debug("{} {} {} {} {}", groupEUI, group, groupChannels.size(), requestChannels.size(), query);
+            //.info("query withseconds back: " + query);
+            try (Connection conn = dataSource.getConnection();
+                    PreparedStatement pstd = conn.prepareStatement(deviceQuery);
+                    PreparedStatement pst = conn.prepareStatement(query);) {
+                pstd.setString(1, group);
+                ResultSet rs = pstd.executeQuery();
+                while (rs.next()) {
+                    devices.put(rs.getString(1), Arrays.asList(rs.getString(2).split(",")));
+                }
+                pst.setString(1, group);
+                pst.setTimestamp(2, new Timestamp(timestamp));
+                rs = pst.executeQuery();
+                int channelIndex;
+                String channelName;
+                String devEui;
+                double d;
+                while (rs.next()) {
+                    for (int i = 0; i < groupChannels.size(); i++) {
+                        devEui = rs.getString(1);
+                        channelName = groupChannels.get(i);
+                        channelIndex = devices.get(devEui).indexOf(channelName);
+                        d = rs.getDouble(6 + channelIndex);
+                        if (!rs.wasNull()) {
+                            tmpResult.add(new ChannelData(devEui, channelName, d,
+                                    rs.getTimestamp(5).getTime()));
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                //logger.error(e.getMessage());
+                throw new IotDatabaseException(IotDatabaseException.SQL_EXCEPTION, e.getMessage(), e);
+            } catch (Exception ex) {
+                //logger.error(ex.getMessage());
+                throw new IotDatabaseException(IotDatabaseException.UNKNOWN, ex.getMessage());
+            }
+            if (tmpResult.isEmpty()) {
+                return result;
+            }
+            long processedTimestamp = 0;
+            String prevEUI = "";
+            long prevTimestamp = 0;
+            int idx;
+            for (int i = 0; i < tmpResult.size(); i++) {
+                cd = tmpResult.get(i);
+                // logger.info("ChannelData: {} {} {}", cd.getDeviceEUI(), cd.getName(),
+                // cd.getTimestamp());
+                if (!cd.getDeviceEUI().equalsIgnoreCase(prevEUI)) {
+                    if (!measuresForEuiTimestamp.isEmpty()) {
+                        measuresForEui.add(measuresForEuiTimestamp);
+                    }
+                    if (!measuresForEui.isEmpty()) {
+                        result.add(measuresForEui);
+                    }
+                    measuresForEui = new ArrayList<>();
+                    measuresForEuiTimestamp = new ArrayList<>();
+                    for (int j = 0; j < requestChannels.size(); j++) {
+                        measuresForEuiTimestamp.add(null);
+                    }
+                    idx = requestChannels.indexOf(cd.getName());
+                    if (idx > -1) {
+                        measuresForEuiTimestamp.set(idx, cd);
+                    }
+                    prevEUI = cd.getDeviceEUI();
+                    prevTimestamp = cd.getTimestamp();
+                } else {
+                    if (prevTimestamp == cd.getTimestamp()) {
+                        // next measurement
+                        idx = requestChannels.indexOf(cd.getName());
+                        if (idx > -1) {
+                            measuresForEuiTimestamp.set(idx, cd);
+                        }
+                    } else {
+                        // skip prevous measures
+                    }
+                }
+            }
+            if (!measuresForEuiTimestamp.isEmpty()) {
+                measuresForEui.add(measuresForEuiTimestamp);
+            }
+            if (!measuresForEui.isEmpty()) {
+                result.add(measuresForEui);
+            }
+            return result;
+        } catch (Exception e) {
+            StackTraceElement[] ste = e.getStackTrace();
+            //logger.error("requestChannels[{}]", requestChannels.size());
+            //logger.error("channelNames[{}]", channelNames.length);
+            //logger.error(e.getMessage());
+            for (int i = 0; i < ste.length; i++) {
+                //logger.error("{}.{}:{}", e.getStackTrace()[i].getClassName(), e.getStackTrace()[i].getMethodName(),
+                //        e.getStackTrace()[i].getLineNumber());
+            }
+            return null;
         }
     }
 

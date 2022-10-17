@@ -94,7 +94,7 @@ public class ProviderResource {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
         }
-        result = format(service.getData(userID, groupEUI, channelName, query));
+        result = format(service.getGroupData(userID, groupEUI, channelName, query));
         return Response.ok(result).build();
     }
 
