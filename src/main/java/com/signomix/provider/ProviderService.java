@@ -86,18 +86,23 @@ public class ProviderService {
 
     }
 
-    List getGroupData(String userID, String groupEUI, String channelName, String query) {
+    List getGroupData(String userID, String groupEUI, String channelNames) {
         LOG.debug("group:" + groupEUI);
-        LOG.debug("channel:" + channelName);
-        LOG.debug("query:" + query);
+        LOG.debug("channel:" + channelNames);
+
+        long organizationId=-1;
+        long secondsBack=3600;
+        //LOG.debug("query:" + query);
         try {
-            if (channelName != null && !"$".equals(channelName)) {
-                ArrayList result = (ArrayList) dataDao.getGroupValues(userID, groupEUI,
-                        query + " channel " + channelName);
-                return new ArrayList<>();
-            } else {
-                return (ArrayList) dataDao.getGroupValues(userID, groupEUI, query);
-            }
+            //if (channelName != null && !"$".equals(channelName)) {
+            //    String query2=null!=query?query:"";
+            //    query2=query2+" channel " + channelName;
+            //    ArrayList result = (ArrayList) dataDao.getGroupValues(userID, groupEUI,query2);
+            //    return new ArrayList<>();
+            //} else {
+                //return (ArrayList) dataDao.getGroupValues(userID, groupEUI, channelNames);
+                return dataDao.getValuesOfGroup(userID, organizationId, groupEUI, channelNames, secondsBack);
+            //}
         } catch (IotDatabaseException ex) {
             LOG.warn(ex.getMessage());
             return new ArrayList();

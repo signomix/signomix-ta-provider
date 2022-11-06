@@ -391,10 +391,10 @@ public class IotDatabaseDao implements IotDatabaseIface {
     }
 
     @Override
-    public List<List> getGroupValues(String userID, String groupEUI, String dataQuery)
+    public List<List<List>> getValuesOfGroup(String userID, long organizationId, String groupEUI, String channelNames, long secondsBack)
             throws IotDatabaseException {
-        // TODO Auto-generated method stub
-        return null;
+                String[] channels=channelNames.split(",");
+        return getGroupLastValues(userID, organizationId, groupEUI, channels, secondsBack);
     }
 
     @Override
@@ -449,6 +449,7 @@ public class IotDatabaseDao implements IotDatabaseIface {
      * @return
      * @throws ThingsDataException
      */
+    /* 
     public List<List<List>> getValuesOfGroup(String userID, long organizationID, String groupEUI, String[] channelNames,
             long interval,
             String dataQuery)
@@ -533,6 +534,7 @@ public class IotDatabaseDao implements IotDatabaseIface {
             throw new IotDatabaseException(IotDatabaseException.UNKNOWN, ex.getMessage());
         }
     }
+    */
 
     public List<List<List>> getGroupLastValues(String userID, long organizationID, String groupEUI,
             String[] channelNames, long secondsBack)
@@ -540,7 +542,7 @@ public class IotDatabaseDao implements IotDatabaseIface {
         List<String> requestChannels = Arrays.asList(channelNames);
         try {
             String group = "%," + groupEUI + ",%";
-            long timestamp = System.currentTimeMillis() - secondsBack;
+            long timestamp = System.currentTimeMillis() - secondsBack*1000;
             String deviceQuery = "SELECT eui,channels FROM devices WHERE groups like ?;";
             HashMap<String, List> devices = new HashMap<>();
             String query;

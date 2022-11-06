@@ -82,7 +82,7 @@ public class ProviderResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Response getGroupData2(
             @PathParam("group") String groupEUI,
-            @PathParam("channel") String channelName,
+            @PathParam("channel") String channelNames,
             @QueryParam("tid") String sessionToken,
             @QueryParam("query") String query) {
         // List result;
@@ -94,7 +94,8 @@ public class ProviderResource {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
         }
-        result = format(service.getGroupData(userID, groupEUI, channelName, query));
+        //result = format(service.getGroupData(userID, groupEUI, channelName, query));
+        result = format(service.getGroupData(userID, groupEUI, channelNames));
         return Response.ok(result).build();
     }
 
