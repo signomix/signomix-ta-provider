@@ -87,8 +87,12 @@
       <groupId>com.cedarsoftware</groupId>
       <artifactId>json-io</artifactId>
       <version>4.13.0</version>
-  </dependency>
-  
+    </dependency>
+    <dependency>
+      <groupId>com.signomix</groupId>
+      <artifactId>signomix-common</artifactId>
+      <version>1.0</version>
+    </dependency>
   </dependencies>
   <build>
     <plugins>
@@ -152,7 +156,6 @@
           </replacements>
         </configuration>
       </plugin>
-
     </plugins>
   </build>
   <profiles>
