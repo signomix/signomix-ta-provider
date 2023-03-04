@@ -127,15 +127,15 @@ public class ProviderService {
      */
     private ArrayList normalize(ArrayList data, String query) {
         DataQuery dq;
-        try{
-            dq=DataQuery.parse(query);
-        }catch(DataQueryException ex){
+        try {
+            dq = DataQuery.parse(query);
+        } catch (DataQueryException ex) {
             ex.printStackTrace();
             return data;
         }
-        List<String> channelNames=dq.getChannels();
+        List<String> channelNames = dq.getChannels();
         HashMap<String, SortedMap<Long, ChannelData>> map = new HashMap<>();
-        ArrayList<ArrayList> result=new ArrayList<>();
+        ArrayList<ArrayList> result = new ArrayList<>();
         ArrayList<ChannelData> subList;
         ChannelData tmpCd;
         int numberOfLists = data.size();
@@ -144,14 +144,14 @@ public class ProviderService {
         }
         SortedMap<Long, ChannelData> subMap;
         for (int i = 0; i < numberOfLists; i++) {
-            LOG.info("i=="+i);
+            LOG.info("i==" + i);
             subList = (ArrayList<ChannelData>) data.get(i);
             for (int j = 0; j < subList.size(); j++) {
-                LOG.info("j=="+j);
+                LOG.info("j==" + j);
                 tmpCd = subList.get(j);
-                subMap=map.get(tmpCd.getName());
-                if ( null==subMap) {
-                    subMap=new TreeMap<>();
+                subMap = map.get(tmpCd.getName());
+                if (null == subMap) {
+                    subMap = new TreeMap<>();
                 }
                 subMap.put(tmpCd.getTimestamp(), tmpCd);
                 map.put(tmpCd.getName(), subMap);
@@ -165,33 +165,40 @@ public class ProviderService {
         for (int i = 0; i < channelNames.size(); i++) {
             mainKey = (String) channelNames.get(i);
             submap2 = map.get(mainKey);
-            it = submap2.keySet().iterator();
-            while (it.hasNext()) {
-                timestamp=it.next();
-                for (int j = 0; j < channelNames.size(); j++) {
-                    key = (String) channelNames.get(j);
-                    if (!key.equals(mainKey)) {
-                        tmpMap = map.get(key);
-                        if(null==tmpMap.get(timestamp)){
-                            tmpCd=submap2.get(timestamp);
-                            tmpMap.put(timestamp,new ChannelData(tmpCd.getDeviceEUI(),key,null,timestamp));
+            if (null != submap2) {
+                it = submap2.keySet().iterator();
+                while (it.hasNext()) {
+                    timestamp = it.next();
+                    for (int j = 0; j < channelNames.size(); j++) {
+                        key = (String) channelNames.get(j);
+                        if (!key.equals(mainKey)) {
+                            tmpMap = map.get(key);
+                            if (null != tmpMap && null == tmpMap.get(timestamp)) {
+                                tmpCd = submap2.get(timestamp);
+                                tmpMap.put(timestamp, new ChannelData(tmpCd.getDeviceEUI(), key, null, timestamp));
+                            }
                         }
                     }
                 }
             }
         }
-        ArrayList<Long> timestamps=new ArrayList<>();
-        for (Map.Entry mapElement : map.get(channelNames.get(0)).entrySet()) {
-            timestamps.add( (Long)mapElement.getKey() );
+        ArrayList<Long> timestamps = new ArrayList<>();
+        SortedMap<Long, ChannelData> tmpMap2 = map.get(channelNames.get(0));
+        if (null != tmpMap2) {
+            for (Map.Entry mapElement : tmpMap2.entrySet()) {
+                timestamps.add((Long) mapElement.getKey());
+            }
         }
-        for(int i=0; i<timestamps.size(); i++){
-            subList=new ArrayList<>();
-            for(int j=0; j<channelNames.size(); j++){
-                subList.add(map.get(channelNames.get(j)).get(timestamps.get(i)));
+        for (int i = 0; i < timestamps.size(); i++) {
+            subList = new ArrayList<>();
+            for (int j = 0; j < channelNames.size(); j++) {
+                SortedMap<Long, ChannelData> tmpMap3=map.get(channelNames.get(j));
+                if(null!=tmpMap3){
+                    subList.add(tmpMap3.get(timestamps.get(i)));
+                }
             }
             result.add(subList);
         }
-
         return result;
     }
 }
