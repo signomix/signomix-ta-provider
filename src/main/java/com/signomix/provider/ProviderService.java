@@ -94,6 +94,7 @@ public class ProviderService {
 
     }
 
+    @CacheResult(cacheName = "group-query-cache")
     List getGroupData(String userID, String groupEUI, String channelNames) {
         LOG.debug("group:" + groupEUI);
         LOG.debug("channel:" + channelNames);
@@ -144,10 +145,8 @@ public class ProviderService {
         }
         SortedMap<Long, ChannelData> subMap;
         for (int i = 0; i < numberOfLists; i++) {
-            LOG.info("i==" + i);
             subList = (ArrayList<ChannelData>) data.get(i);
             for (int j = 0; j < subList.size(); j++) {
-                LOG.info("j==" + j);
                 tmpCd = subList.get(j);
                 subMap = map.get(tmpCd.getName());
                 if (null == subMap) {
