@@ -191,8 +191,8 @@ public class ProviderService {
         for (int i = 0; i < timestamps.size(); i++) {
             subList = new ArrayList<>();
             for (int j = 0; j < channelNames.size(); j++) {
-                SortedMap<Long, ChannelData> tmpMap3=map.get(channelNames.get(j));
-                if(null!=tmpMap3){
+                SortedMap<Long, ChannelData> tmpMap3 = map.get(channelNames.get(j));
+                if (null != tmpMap3) {
                     subList.add(tmpMap3.get(timestamps.get(i)));
                 }
             }

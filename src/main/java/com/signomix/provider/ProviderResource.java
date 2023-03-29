@@ -1,6 +1,7 @@
 package com.signomix.provider;
 
 import java.util.HashMap;
+import java.util.List;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
@@ -67,13 +68,20 @@ public class ProviderResource {
         // List result;
         String result;
         String userID = null;
+        long t0=System.currentTimeMillis();
         if (authorizationRequired) {
             userID = service.getUserID(sessionToken);
             if (null == userID) {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
         }
-        result = format(service.getData(userID, deviceEUI, channelName, query));
+        long t1=System.currentTimeMillis();
+        LOG.debug("Authorization time [ms]: "+(t1-t0));
+        List list=service.getData(userID, deviceEUI, channelName, query);
+        long t2=System.currentTimeMillis();
+        LOG.debug("DB query time [ms]: "+(t2-t1));
+        result = format(list);
+        LOG.debug("Format time [ms]: "+(System.currentTimeMillis()-t2));
         return Response.ok(result).build();
     }
 
@@ -103,7 +111,8 @@ public class ProviderResource {
         if(null==o){
             return null;
         }
-        return JsonWriter.objectToJson(o, args);
+        String result = JsonWriter.objectToJson(o, args);
+        return result;
     }
 
 }
