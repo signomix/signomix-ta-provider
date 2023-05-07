@@ -20,6 +20,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import com.cedarsoftware.util.io.JsonWriter;
+import com.signomix.common.iot.ChannelData;
 
 import io.quarkus.runtime.StartupEvent;
 import io.vertx.mutiny.core.eventbus.EventBus;
@@ -68,20 +69,48 @@ public class ProviderResource {
         // List result;
         String result;
         String userID = null;
-        long t0=System.currentTimeMillis();
+        long t0 = System.currentTimeMillis();
         if (authorizationRequired) {
             userID = service.getUserID(sessionToken);
             if (null == userID) {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
         }
-        long t1=System.currentTimeMillis();
-        LOG.debug("Authorization time [ms]: "+(t1-t0));
-        List list=service.getData(userID, deviceEUI, channelName, query);
-        long t2=System.currentTimeMillis();
-        LOG.debug("DB query time [ms]: "+(t2-t1));
-        result = format(list);
-        LOG.debug("Format time [ms]: "+(System.currentTimeMillis()-t2));
+        long t1 = System.currentTimeMillis();
+        LOG.debug("Authorization time [ms]: " + (t1 - t0));
+        List list = service.getData(userID, deviceEUI, channelName, query);
+        long t2 = System.currentTimeMillis();
+        LOG.debug("DB query time [ms]: " + (t2 - t1) + query);
+        result = format(list, "json");
+        LOG.debug("Format time [ms]: " + (System.currentTimeMillis() - t2));
+        return Response.ok(result).build();
+    }
+
+    @Path("/provider/device/{device}/{channel}")
+    @GET
+    @Produces("text/csv")
+    public Response getDeviceData3(
+            @PathParam("device") String deviceEUI,
+            @PathParam("channel") String channelName,
+            @QueryParam("tid") String sessionToken,
+            @QueryParam("query") String query) {
+        // List result;
+        String result;
+        String userID = null;
+        long t0 = System.currentTimeMillis();
+        if (authorizationRequired) {
+            userID = service.getUserID(sessionToken);
+            if (null == userID) {
+                return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
+            }
+        }
+        long t1 = System.currentTimeMillis();
+        LOG.debug("Authorization time [ms]: " + (t1 - t0));
+        List list = service.getData(userID, deviceEUI, channelName, query);
+        long t2 = System.currentTimeMillis();
+        LOG.debug("DB query time [ms]: " + (t2 - t1) + query);
+        result = format(list, "csv");
+        LOG.debug("Format time [ms]: " + (System.currentTimeMillis() - t2));
         return Response.ok(result).build();
     }
 
@@ -102,17 +131,53 @@ public class ProviderResource {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
         }
-        //result = format(service.getGroupData(userID, groupEUI, channelName, query));
-        result = format(service.getGroupData(userID, groupEUI, channelNames));
+        // result = format(service.getGroupData(userID, groupEUI, channelName, query));
+        result = format(service.getGroupData(userID, groupEUI, channelNames), "json");
         return Response.ok(result).build();
     }
 
-    public String format(Object o) {
-        if(null==o){
+    public String format(Object o, String type) {
+        if (null == o) {
             return null;
         }
-        String result = JsonWriter.objectToJson(o, args);
+        String result = "";
+        if ("csv".equals(type)) {
+            return toCsv((List<List>)o, ",", "\r\n");
+        } else {
+            result = JsonWriter.objectToJson(o, args);
+        }
         return result;
+    }
+
+    private String toCsv(List<List> input, String fieldSeparator, String lineSeparator) {
+        StringBuffer sb = new StringBuffer();
+        List<ChannelData> sublist;
+        boolean headerLinePresent=false;
+        ChannelData cData;
+        if(input.size()<1){
+            return "";
+        }
+        List<List> data=input.get(0);
+        for (int i = 0; i < data.size(); i++) {
+            sublist=data.get(i);
+            if(!headerLinePresent){
+                sb.append("timestamp");
+                for(int j=0; j<sublist.size(); j++){
+                    cData=sublist.get(j);
+                    sb.append(fieldSeparator).append(cData.getName());
+                }
+                sb.append(lineSeparator);
+                headerLinePresent=true;
+            }
+            cData=sublist.get(0);
+            sb.append(cData.getTimestamp());
+            for(int j=0; j<sublist.size(); j++){
+                cData=sublist.get(j);
+                sb.append(",").append(cData.getValue());
+            }
+            sb.append(lineSeparator);
+        }
+        return sb.toString();
     }
 
 }

@@ -127,6 +127,8 @@ public class ProviderService {
      * @return
      */
     private ArrayList normalize(ArrayList data, String query) {
+        long t0=System.currentTimeMillis();
+        long t1;
         DataQuery dq;
         try {
             dq = DataQuery.parse(query);
@@ -141,6 +143,8 @@ public class ProviderService {
         ChannelData tmpCd;
         int numberOfLists = data.size();
         if (channelNames.size() < 2) {
+            t1=System.currentTimeMillis();
+            LOG.debug("normalize time 1:"+(t1-t0)+" ms");
             return data;
         }
         SortedMap<Long, ChannelData> subMap;
@@ -198,6 +202,8 @@ public class ProviderService {
             }
             result.add(subList);
         }
+        t1=System.currentTimeMillis();
+        LOG.debug("normalize time 2:"+(t1-t0)+" ms");
         return result;
     }
 }
