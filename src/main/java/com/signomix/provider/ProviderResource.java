@@ -2,6 +2,7 @@ package com.signomix.provider;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
@@ -29,6 +30,7 @@ import io.vertx.mutiny.core.eventbus.EventBus;
 @ApplicationScoped
 public class ProviderResource {
     private static final Logger LOG = Logger.getLogger(ProviderResource.class);
+    private AtomicLong tracing = new AtomicLong();
 
     @Inject
     EventBus bus;
@@ -67,6 +69,7 @@ public class ProviderResource {
             @QueryParam("tid") String sessionToken,
             @QueryParam("query") String query) {
         // List result;
+        long trackingId = tracing.incrementAndGet();
         String result;
         String userID = null;
         long t0 = System.currentTimeMillis();
@@ -77,12 +80,14 @@ public class ProviderResource {
             }
         }
         long t1 = System.currentTimeMillis();
-        LOG.debug("Authorization time [ms]: " + (t1 - t0));
+        LOG.debug("trackingID:"+trackingId+" authorization [ms]: " + (t1 - t0));
         List list = service.getData(userID, deviceEUI, channelName, query);
         long t2 = System.currentTimeMillis();
-        LOG.debug("DB query time [ms]: " + (t2 - t1) + query);
+        LOG.debug("trackingID:"+trackingId+" query [ms]: " + (t2 - t1) + query);
         result = format(list, "json");
-        LOG.debug("Format time [ms]: " + (System.currentTimeMillis() - t2));
+        long t3 = System.currentTimeMillis();
+        LOG.debug("trackingID:"+trackingId+" formatting [ms]: " + (t3 - t2));
+        LOG.debug("trackingID:"+trackingId+" total [ms]: " + (t3 - t0));
         return Response.ok(result).build();
     }
 
