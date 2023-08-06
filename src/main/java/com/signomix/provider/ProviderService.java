@@ -94,6 +94,26 @@ public class ProviderService {
 
     }
 
+    @CacheResult(cacheName = "query-cache")
+    List getDataVer2(String userID, String deviceEUI, String channelName, String query) {
+        LOG.debug("userID:" + userID);
+        LOG.debug("device:" + deviceEUI);
+        LOG.debug("channel:" + channelName);
+        LOG.debug("query:" + query);
+        try {
+            if(null==channelName || channelName.isEmpty()){
+                return dataDao.getValues2(userID, deviceEUI, query);
+            }else{
+                return dataDao.getValues2(userID, deviceEUI, query+" channel "+channelName);
+            }
+        } catch (IotDatabaseException ex) {
+            ex.printStackTrace();
+            LOG.warn(ex.getMessage());
+            return new ArrayList();
+        }
+
+    }
+
     @CacheResult(cacheName = "group-query-cache")
     List getGroupData(String userID, String groupEUI, String channelNames) {
         LOG.debug("group:" + groupEUI);
