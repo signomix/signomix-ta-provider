@@ -15,11 +15,9 @@ import javax.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
-import com.signomix.common.db.AuthDao;
 import com.signomix.common.db.AuthDaoIface;
 import com.signomix.common.db.DataQuery;
 import com.signomix.common.db.DataQueryException;
-import com.signomix.common.db.IotDatabaseDao;
 import com.signomix.common.db.IotDatabaseException;
 import com.signomix.common.db.IotDatabaseIface;
 import com.signomix.common.iot.ChannelData;
@@ -33,7 +31,12 @@ import io.quarkus.runtime.StartupEvent;
 public class ProviderService {
     private static final Logger LOG = Logger.getLogger(ProviderService.class);
 
-    // TODO: test /q/health/ready
+    // TODO: test /q/health/ready    
+    
+    // TODO: move to config
+    private long sessionTokenLifetime = 30; // minutes
+    private long permanentTokenLifetime = 10* 365 * 24 * 60; // 10 years in minutes
+
 
     @Inject
     @DataSource("iot")
@@ -43,8 +46,8 @@ public class ProviderService {
     @DataSource("auth")
     AgroalDataSource ds2;
 
-    IotDatabaseIface dataDao;
-    AuthDaoIface authDao;
+    IotDatabaseIface dataDao = null;
+    AuthDaoIface authDao = null;
 
     @ConfigProperty(name = "signomix.app.key", defaultValue = "not_configured")
     String appKey;
@@ -53,11 +56,30 @@ public class ProviderService {
     @ConfigProperty(name = "signomix.query.limit", defaultValue = "500")
     String requestLimitConfigured;
 
+    @ConfigProperty(name = "signomix.database.type")
+    String databaseType;
+
     public void onApplicationStart(@Observes StartupEvent event) {
-        dataDao = new IotDatabaseDao();
-        dataDao.setDatasource(ds);
-        authDao = new AuthDao();
-        authDao.setDatasource(ds2);
+        if ("postgresql".equalsIgnoreCase(databaseType)) {
+            LOG.info("using postgresql database");
+            dataDao = new com.signomix.common.tsdb.IotDatabaseDao();
+            dataDao.setDatasource(ds);
+            authDao = new com.signomix.common.tsdb.AuthDao();
+            authDao.setDatasource(ds2);
+        } else if ("h2".equalsIgnoreCase(databaseType)) {
+            LOG.info("using mysql database");
+            dataDao = new com.signomix.common.db.IotDatabaseDao();
+            dataDao.setDatasource(ds);
+            authDao = new com.signomix.common.db.AuthDao();
+            authDao.setDatasource(ds2);
+        } else if ("both".equalsIgnoreCase(databaseType)) {
+            LOG.info("using both databases");
+            dataDao = new com.signomix.common.tsdb.IotDatabaseDao();
+            dataDao.setDatasource(ds);
+            authDao = new com.signomix.common.db.AuthDao();
+            authDao.setDatasource(ds2);
+        }
+
         try {
             LOG.info("requestLimitConfigured:" + requestLimitConfigured);
             int requestLimit = Integer.parseInt(requestLimitConfigured);
@@ -70,7 +92,7 @@ public class ProviderService {
     @CacheResult(cacheName = "token-cache")
     String getUserID(String sessionToken) {
         LOG.debug("token:" + sessionToken);
-        return authDao.getUser(sessionToken);
+        return authDao.getUserId(sessionToken, sessionTokenLifetime, permanentTokenLifetime);
     }
 
     @CacheResult(cacheName = "query-cache")
@@ -101,10 +123,10 @@ public class ProviderService {
         LOG.debug("channel:" + channelName);
         LOG.debug("query:" + query);
         try {
-            if(null==channelName || channelName.isEmpty()){
+            if (null == channelName || channelName.isEmpty()) {
                 return dataDao.getValues2(userID, deviceEUI, query);
-            }else{
-                return dataDao.getValues2(userID, deviceEUI, query+" channel "+channelName);
+            } else {
+                return dataDao.getValues2(userID, deviceEUI, query + " channel " + channelName);
             }
         } catch (IotDatabaseException ex) {
             ex.printStackTrace();
@@ -147,7 +169,7 @@ public class ProviderService {
      * @return
      */
     private ArrayList normalize(ArrayList data, String query) {
-        long t0=System.currentTimeMillis();
+        long t0 = System.currentTimeMillis();
         long t1;
         DataQuery dq;
         try {
@@ -163,8 +185,8 @@ public class ProviderService {
         ChannelData tmpCd;
         int numberOfLists = data.size();
         if (channelNames.size() < 2) {
-            t1=System.currentTimeMillis();
-            LOG.debug("normalize time 1:"+(t1-t0)+" ms");
+            t1 = System.currentTimeMillis();
+            LOG.debug("normalize time 1:" + (t1 - t0) + " ms");
             return data;
         }
         SortedMap<Long, ChannelData> subMap;
@@ -222,8 +244,8 @@ public class ProviderService {
             }
             result.add(subList);
         }
-        t1=System.currentTimeMillis();
-        LOG.debug("normalize time 2:"+(t1-t0)+" ms");
+        t1 = System.currentTimeMillis();
+        LOG.debug("normalize time 2:" + (t1 - t0) + " ms");
         return result;
     }
 }
