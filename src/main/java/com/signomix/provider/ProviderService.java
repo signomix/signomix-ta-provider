@@ -137,7 +137,7 @@ public class ProviderService {
     }
 
     @CacheResult(cacheName = "group-query-cache")
-    List getGroupData(String userID, String groupEUI, String channelNames) {
+    List getGroupLastData(String userID, String groupEUI, String channelNames) {
         LOG.debug("group:" + groupEUI);
         LOG.debug("channel:" + channelNames);
 
@@ -153,7 +153,36 @@ public class ProviderService {
             // return new ArrayList<>();
             // } else {
             // return (ArrayList) dataDao.getGroupValues(userID, groupEUI, channelNames);
-            return dataDao.getValuesOfGroup(userID, organizationId, groupEUI, channelNames, secondsBack);
+            String[] channels = channelNames.split(",");
+            return dataDao.getGroupLastValues(userID, organizationId, groupEUI, channels, secondsBack);
+            //return dataDao.getValuesOfGroup(userID, organizationId, groupEUI, channels, secondsBack);
+            // }
+        } catch (IotDatabaseException ex) {
+            LOG.warn(ex.getMessage());
+            return new ArrayList();
+        }
+
+    }
+
+    //@CacheResult(cacheName = "group-query-cache")
+    List getGroupData(String userID, String groupEUI, String channelNames, String query) {
+        LOG.debug("group:" + groupEUI);
+        LOG.debug("channel:" + channelNames);
+
+        long organizationId = -1;
+        // LOG.debug("query:" + query);
+        try {
+            // if (channelName != null && !"$".equals(channelName)) {
+            // String query2=null!=query?query:"";
+            // query2=query2+" channel " + channelName;
+            // ArrayList result = (ArrayList) dataDao.getGroupValues(userID,
+            // groupEUI,query2);
+            // return new ArrayList<>();
+            // } else {
+            // return (ArrayList) dataDao.getGroupValues(userID, groupEUI, channelNames);
+            String[] channels = channelNames.split(",");
+            return dataDao.getGroupValues(userID, organizationId, groupEUI, channels, query);
+            //return dataDao.getValuesOfGroup(userID, organizationId, groupEUI, channels, secondsBack);
             // }
         } catch (IotDatabaseException ex) {
             LOG.warn(ex.getMessage());

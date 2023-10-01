@@ -197,8 +197,13 @@ public class ProviderResource {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
         }
+        if(query==null || query.isEmpty()){
+            result = format(service.getGroupLastData(userID, groupEUI, channelNames), "json");
+        }else{
+            result = format(service.getGroupData(userID, groupEUI, channelNames, query), "json");
+        }
         // result = format(service.getGroupData(userID, groupEUI, channelName, query));
-        result = format(service.getGroupData(userID, groupEUI, channelNames), "json");
+        
         return Response.ok(result).build();
     }
 
