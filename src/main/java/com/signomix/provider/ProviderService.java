@@ -46,6 +46,10 @@ public class ProviderService {
     @DataSource("auth")
     AgroalDataSource ds2;
 
+    @Inject
+    @DataSource("oltp")
+    AgroalDataSource tsDs;
+
     IotDatabaseIface dataDao = null;
     AuthDaoIface authDao = null;
 
@@ -63,21 +67,17 @@ public class ProviderService {
         if ("postgresql".equalsIgnoreCase(databaseType)) {
             LOG.info("using postgresql database");
             dataDao = new com.signomix.common.tsdb.IotDatabaseDao();
-            dataDao.setDatasource(ds);
+            dataDao.setDatasource(tsDs);
             authDao = new com.signomix.common.tsdb.AuthDao();
-            authDao.setDatasource(ds2);
+            authDao.setDatasource(tsDs);
         } else if ("h2".equalsIgnoreCase(databaseType)) {
             LOG.info("using mysql database");
             dataDao = new com.signomix.common.db.IotDatabaseDao();
             dataDao.setDatasource(ds);
             authDao = new com.signomix.common.db.AuthDao();
             authDao.setDatasource(ds2);
-        } else if ("both".equalsIgnoreCase(databaseType)) {
-            LOG.info("using both databases");
-            dataDao = new com.signomix.common.tsdb.IotDatabaseDao();
-            dataDao.setDatasource(ds);
-            authDao = new com.signomix.common.db.AuthDao();
-            authDao.setDatasource(ds2);
+        } else {
+            LOG.error("database type not configured");
         }
 
         try {
