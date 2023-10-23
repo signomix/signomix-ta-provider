@@ -22,6 +22,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import com.cedarsoftware.util.io.JsonWriter;
+import com.signomix.common.Token;
 import com.signomix.common.iot.ChannelData;
 
 import io.quarkus.runtime.StartupEvent;
@@ -61,37 +62,6 @@ public class ProviderResource {
         return "OK";
     }
 
-    @Path("/provider/device/{device}/{channel}")
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getDeviceData2(
-            @PathParam("device") String deviceEUI,
-            @PathParam("channel") String channelName,
-            @QueryParam("tid") String sessionToken,
-            @QueryParam("query") String query) {
-        // List result;
-        long trackingId = tracing.incrementAndGet();
-        String result;
-        String userID = null;
-        long t0 = System.currentTimeMillis();
-        if (authorizationRequired) {
-            userID = service.getUserID(sessionToken);
-            if (null == userID) {
-                return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
-            }
-        }
-        long t1 = System.currentTimeMillis();
-        LOG.debug("trackingID:" + trackingId + " authorization [ms]: " + (t1 - t0));
-        List list = service.getData(userID, deviceEUI, channelName, query);
-        long t2 = System.currentTimeMillis();
-        LOG.debug("trackingID:" + trackingId + " query [ms]: " + (t2 - t1) + query);
-        result = format(list, "json");
-        long t3 = System.currentTimeMillis();
-        LOG.debug("trackingID:" + trackingId + " formatting [ms]: " + (t3 - t2));
-        LOG.debug("trackingID:" + trackingId + " total [ms]: " + (t3 - t0));
-        return Response.ok(result).build();
-    }
-
     @Path("/provider/v2/device/{device}/{channel}")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -105,7 +75,7 @@ public class ProviderResource {
         String userID = null;
         long t0 = System.currentTimeMillis();
         if (authorizationRequired) {
-            userID = service.getUserID(sessionToken);
+            userID = service.getSessionToken(sessionToken).getUid();
             if (null == userID) {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
@@ -135,7 +105,7 @@ public class ProviderResource {
         String userID = null;
         long t0 = System.currentTimeMillis();
         if (authorizationRequired) {
-            userID = service.getUserID(sessionToken);
+            userID = service.getSessionToken(sessionToken).getUid();
             if (null == userID) {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
@@ -165,7 +135,7 @@ public class ProviderResource {
         String userID = null;
         long t0 = System.currentTimeMillis();
         if (authorizationRequired) {
-            userID = service.getUserID(sessionToken);
+            userID = service.getSessionToken(sessionToken).getUid();
             if (null == userID) {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
@@ -190,20 +160,22 @@ public class ProviderResource {
             @QueryParam("query") String query) {
         // List result;
         String result;
-        String userID = null;
+        //String userID = null;
+        Token token=null;
         if (authorizationRequired) {
-            userID = service.getUserID(sessionToken);
-            if (null == userID) {
+            token = service.getSessionToken(sessionToken);
+            //userID = service.getUserID(sessionToken);
+            if (null == token) {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
         }
-        if(query==null || query.isEmpty()){
-            result = format(service.getGroupLastData(userID, groupEUI, channelNames), "json");
-        }else{
-            result = format(service.getGroupData(userID, groupEUI, channelNames, query), "json");
+        if (query == null || query.isEmpty()) {
+            result = format(service.getGroupLastData(token, groupEUI, channelNames), "json");
+        } else {
+            result = format(service.getGroupData(token, groupEUI, channelNames, query), "json");
         }
         // result = format(service.getGroupData(userID, groupEUI, channelName, query));
-        
+
         return Response.ok(result).build();
     }
 
@@ -243,7 +215,7 @@ public class ProviderResource {
         }
         List<List> data = input.get(0);
         for (int i = 0; i < data.size(); i++) {
-            sublist = (List<ChannelData>)data.get(i);
+            sublist = (List<ChannelData>) data.get(i);
             if (!headerLinePresent) {
                 sb.append("timestamp");
                 for (int j = 0; j < sublist.size(); j++) {

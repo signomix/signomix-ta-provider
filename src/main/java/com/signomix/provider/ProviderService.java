@@ -15,12 +15,14 @@ import javax.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
+import com.signomix.common.Token;
 import com.signomix.common.db.AuthDaoIface;
 import com.signomix.common.db.DataQuery;
 import com.signomix.common.db.DataQueryException;
 import com.signomix.common.db.IotDatabaseException;
 import com.signomix.common.db.IotDatabaseIface;
 import com.signomix.common.iot.ChannelData;
+import com.signomix.common.iot.DeviceGroup;
 
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.agroal.DataSource;
@@ -31,12 +33,11 @@ import io.quarkus.runtime.StartupEvent;
 public class ProviderService {
     private static final Logger LOG = Logger.getLogger(ProviderService.class);
 
-    // TODO: test /q/health/ready    
-    
+    // TODO: test /q/health/ready
+
     // TODO: move to config
     private long sessionTokenLifetime = 30; // minutes
-    private long permanentTokenLifetime = 10* 365 * 24 * 60; // 10 years in minutes
-
+    private long permanentTokenLifetime = 10 * 365 * 24 * 60; // 10 years in minutes
 
     @Inject
     @DataSource("iot")
@@ -95,6 +96,17 @@ public class ProviderService {
         return authDao.getUserId(sessionToken, sessionTokenLifetime, permanentTokenLifetime);
     }
 
+    @CacheResult(cacheName = "issuer-cache")
+    String getIssuerID(String sessionToken) {
+        LOG.debug("token:" + sessionToken);
+        return authDao.getUserId(sessionToken, sessionTokenLifetime, permanentTokenLifetime);
+    }
+
+    Token getSessionToken(String sessionToken) {
+        LOG.debug("token:" + sessionToken);
+        return authDao.getToken(sessionToken, sessionTokenLifetime, permanentTokenLifetime);
+    }
+
     @CacheResult(cacheName = "query-cache")
     List getData(String userID, String deviceEUI, String channelName, String query) {
         LOG.debug("userID:" + userID);
@@ -137,26 +149,33 @@ public class ProviderService {
     }
 
     @CacheResult(cacheName = "group-query-cache")
-    List getGroupLastData(String userID, String groupEUI, String channelNames) {
+    List getGroupLastData(Token token, String groupEUI, String channelNames) {
         LOG.debug("group:" + groupEUI);
         LOG.debug("channel:" + channelNames);
 
         long organizationId = -1;
         long secondsBack = 3600;
         // LOG.debug("query:" + query);
+        DeviceGroup group = null;
         try {
-            // if (channelName != null && !"$".equals(channelName)) {
-            // String query2=null!=query?query:"";
-            // query2=query2+" channel " + channelName;
-            // ArrayList result = (ArrayList) dataDao.getGroupValues(userID,
-            // groupEUI,query2);
-            // return new ArrayList<>();
-            // } else {
-            // return (ArrayList) dataDao.getGroupValues(userID, groupEUI, channelNames);
-            String[] channels = channelNames.split(",");
-            return dataDao.getGroupLastValues(userID, organizationId, groupEUI, channels, secondsBack);
-            //return dataDao.getValuesOfGroup(userID, organizationId, groupEUI, channels, secondsBack);
-            // }
+            group = dataDao.getGroup(groupEUI);
+        } catch (IotDatabaseException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        if (null == group || !hasAccessRights(token.getUid(), group)) {
+            LOG.warn("no access rights");
+            return null;
+        }
+        String[] channels;
+        if (channelNames == null || channelNames.isEmpty()) {
+            HashMap<String,Object> map = group.getChannels();
+            channels = map.keySet().toArray(new String[map.size()]);
+        } else {
+            channels = channelNames.split(",");
+        }
+        try {
+            return dataDao.getGroupLastValues(token.getUid(), organizationId, groupEUI, channels, secondsBack);
         } catch (IotDatabaseException ex) {
             LOG.warn(ex.getMessage());
             return new ArrayList();
@@ -164,8 +183,34 @@ public class ProviderService {
 
     }
 
-    //@CacheResult(cacheName = "group-query-cache")
-    List getGroupData(String userID, String groupEUI, String channelNames, String query) {
+    private boolean hasAccessRights(String userID, DeviceGroup group) {
+        if (null == group) {
+            return false;
+        }
+        String[] admins = group.getAdministrators().split(",");
+        String[] team = group.getTeam().split(",");
+        if (group.getUserID().equals(userID)) {
+            return true;
+        }
+        if (admins.length > 0) {
+            for (int i = 0; i < admins.length; i++) {
+                if (admins[i].equals(userID)) {
+                    return true;
+                }
+            }
+        }
+        if (team.length > 0) {
+            for (int i = 0; i < team.length; i++) {
+                if (team[i].equals(userID)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // @CacheResult(cacheName = "group-query-cache")
+    List getGroupData(Token token, String groupEUI, String channelNames, String query) {
         LOG.debug("group:" + groupEUI);
         LOG.debug("channel:" + channelNames);
 
@@ -181,8 +226,9 @@ public class ProviderService {
             // } else {
             // return (ArrayList) dataDao.getGroupValues(userID, groupEUI, channelNames);
             String[] channels = channelNames.split(",");
-            return dataDao.getGroupValues(userID, organizationId, groupEUI, channels, query);
-            //return dataDao.getValuesOfGroup(userID, organizationId, groupEUI, channels, secondsBack);
+            return dataDao.getGroupValues(token.getUid(), organizationId, groupEUI, channels, query);
+            // return dataDao.getValuesOfGroup(userID, organizationId, groupEUI, channels,
+            // secondsBack);
             // }
         } catch (IotDatabaseException ex) {
             LOG.warn(ex.getMessage());
