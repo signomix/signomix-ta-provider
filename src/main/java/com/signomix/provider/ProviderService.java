@@ -103,7 +103,7 @@ public class ProviderService {
     }
 
     Token getSessionToken(String sessionToken) {
-        LOG.debug("token:" + sessionToken);
+        LOG.info("token:" + sessionToken);
         return authDao.getToken(sessionToken, sessionTokenLifetime, permanentTokenLifetime);
     }
 
@@ -150,11 +150,11 @@ public class ProviderService {
 
     @CacheResult(cacheName = "group-query-cache")
     List getGroupLastData(Token token, String groupEUI, String channelNames) {
-        LOG.debug("group:" + groupEUI);
-        LOG.debug("channel:" + channelNames);
+        LOG.info("group:" + groupEUI);
+        LOG.info("channel:" + channelNames);
 
         long organizationId = -1;
-        long secondsBack = 3600;
+        long secondsBack = 36000;
         // LOG.debug("query:" + query);
         DeviceGroup group = null;
         try {

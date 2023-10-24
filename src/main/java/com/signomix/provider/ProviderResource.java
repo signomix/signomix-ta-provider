@@ -75,7 +75,8 @@ public class ProviderResource {
         String userID = null;
         long t0 = System.currentTimeMillis();
         if (authorizationRequired) {
-            userID = service.getSessionToken(sessionToken).getUid();
+            Token token = service.getSessionToken(sessionToken);
+            userID = token.getUid();
             if (null == userID) {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
@@ -169,7 +170,7 @@ public class ProviderResource {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
         }
-        if (query == null || query.isEmpty()) {
+        if (query == null || query.isEmpty() || query.equals("undefined")) {
             result = format(service.getGroupLastData(token, groupEUI, channelNames), "json");
         } else {
             result = format(service.getGroupData(token, groupEUI, channelNames, query), "json");

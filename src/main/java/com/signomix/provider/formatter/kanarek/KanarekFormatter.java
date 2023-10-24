@@ -47,6 +47,7 @@ public class KanarekFormatter {
      * @return response as JSON String
      */
     public String format(boolean prettyPrint, List data) {
+        logger.info("formatting Kanarek response");
         args.clear();
         args.put(JsonWriter.PRETTY_PRINT, prettyPrint);
         args.put(JsonWriter.DATE_FORMAT, "dd/MMM/yyyy:kk:mm:ss Z");
