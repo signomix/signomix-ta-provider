@@ -149,12 +149,23 @@ public class ProviderService {
     }
 
     @CacheResult(cacheName = "group-query-cache")
-    List getGroupLastData(Token token, String groupEUI, String channelNames) {
-        LOG.info("group:" + groupEUI);
-        LOG.info("channel:" + channelNames);
-
+    List getGroupLastData(Token token, String groupEUI, String channelNames, String query) {
+        long secondsBack = 3600;
+        if (null != query && !query.isEmpty()) {
+            DataQuery dq;
+            //LOG.info("query:" + query);
+            try {
+                dq = DataQuery.parse(query);
+                if (dq.getOffset() != 0) {
+                    secondsBack = dq.getOffset() / 1000; // offset is in ms
+                }
+                //LOG.info("secondsBack:" + secondsBack);
+            } catch (DataQueryException ex) {
+                LOG.warn(ex.getMessage());
+            }
+        }
+        //LOG.debug("secondsBack:" + secondsBack);
         long organizationId = -1;
-        long secondsBack = 36000;
         // LOG.debug("query:" + query);
         DeviceGroup group = null;
         try {
@@ -169,7 +180,7 @@ public class ProviderService {
         }
         String[] channels;
         if (channelNames == null || channelNames.isEmpty()) {
-            HashMap<String,Object> map = group.getChannels();
+            HashMap<String, Object> map = group.getChannels();
             channels = map.keySet().toArray(new String[map.size()]);
         } else {
             channels = channelNames.split(",");

@@ -15,18 +15,16 @@
  */
 package com.signomix.provider.formatter.kanarek;
 
-import com.cedarsoftware.util.io.JsonWriter;
-import com.signomix.common.iot.ChannelData;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import javax.enterprise.context.ApplicationScoped;
-import javax.ws.rs.ApplicationPath;
 
 import org.jboss.logging.Logger;
-import org.slf4j.LoggerFactory;
+
+import com.cedarsoftware.util.io.JsonWriter;
+import com.signomix.common.iot.ChannelData;
 
 @ApplicationScoped
 public class KanarekFormatter {
@@ -47,7 +45,7 @@ public class KanarekFormatter {
      * @return response as JSON String
      */
     public String format(boolean prettyPrint, List data) {
-        logger.info("formatting Kanarek response");
+        //logger.info("formatting Kanarek response");
         args.clear();
         args.put(JsonWriter.PRETTY_PRINT, prettyPrint);
         args.put(JsonWriter.DATE_FORMAT, "dd/MMM/yyyy:kk:mm:ss Z");

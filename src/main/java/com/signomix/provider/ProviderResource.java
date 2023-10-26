@@ -170,11 +170,12 @@ public class ProviderResource {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
         }
-        if (query == null || query.isEmpty() || query.equals("undefined")) {
-            result = format(service.getGroupLastData(token, groupEUI, channelNames), "json");
-        } else {
-            result = format(service.getGroupData(token, groupEUI, channelNames, query), "json");
-        }
+        //if (query == null || query.isEmpty() || query.equals("undefined")) {
+            result = format(service.getGroupLastData(token, groupEUI, channelNames, query), "json");
+        //} else {
+            //TODO: is it needed?
+        //    result = format(service.getGroupData(token, groupEUI, channelNames, query), "json");
+        //}
         // result = format(service.getGroupData(userID, groupEUI, channelName, query));
 
         return Response.ok(result).build();

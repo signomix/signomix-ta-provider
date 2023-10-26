@@ -55,10 +55,11 @@ public class GdataResource {
     @Path("/{path}")
     @GET
     @Produces(MediaType.TEXT_PLAIN)
-    public Response getDeviceData2(
+    public Response getGroupData(
             @PathParam("path") String path,
             @QueryParam("tid") String sessionTokenID,
-            @QueryParam("format") String format) {
+            @QueryParam("format") String format,
+            @QueryParam("query") String query) {
 
         Token token = null;
         if (authorizationRequired) {
@@ -81,7 +82,7 @@ public class GdataResource {
             channels = params[1];
         }
 
-        List result = service.getGroupLastData(token, groupID, channels);
+        List result = service.getGroupLastData(token, groupID, channels, query);
 
         if (null == format || format.isEmpty()) {
             format = "json";
@@ -102,28 +103,40 @@ public class GdataResource {
         return result;
     }
 
-    private String formatCSV(List list) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("EUI");
-        sb.append(",");
-        sb.append("CHANNEL");
-        sb.append(",");
-        sb.append("VALUE");
-        sb.append(",");
-        sb.append("TIMESTAMP");
-        sb.append("\n");
-        for (Object o : list) {
-            ChannelData cd = (ChannelData) o;
-            sb.append(cd.getDeviceEUI());
+    private String formatCSV(List listOfDevicesData) {
+        try {
+            StringBuilder sb = new StringBuilder();
+            sb.append("EUI");
             sb.append(",");
-            sb.append(cd.getName());
+            sb.append("CHANNEL");
             sb.append(",");
-            sb.append(cd.getValue());
+            sb.append("VALUE");
             sb.append(",");
-            sb.append(cd.getTimestamp());
+            sb.append("TIMESTAMP");
             sb.append("\n");
+            for (Object l1 : listOfDevicesData) {
+                List listOfTimestamps = (List) l1;
+                for (Object l2 : listOfTimestamps) {
+                    List listOfMeasurements = (List) l2;
+                    for (Object o : listOfMeasurements) {
+                        ChannelData cd = (ChannelData) o;
+                        sb.append(cd.getDeviceEUI());
+                        sb.append(",");
+                        sb.append(cd.getName());
+                        sb.append(",");
+                        sb.append(cd.getValue());
+                        sb.append(",");
+                        sb.append(cd.getTimestamp());
+                        sb.append("\n");
+                    }
+                }
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            LOG.error("formatCSV error: " + e.getMessage());
+            e.printStackTrace();
+            return "";
         }
-        return sb.toString();
     }
 
 }
