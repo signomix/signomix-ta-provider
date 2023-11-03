@@ -1,5 +1,6 @@
 package com.signomix.provider;
 
+import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
@@ -22,6 +23,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import com.cedarsoftware.util.io.JsonWriter;
+import com.signomix.common.DateTool;
 import com.signomix.common.Token;
 import com.signomix.common.iot.ChannelData;
 
@@ -100,7 +102,8 @@ public class ProviderResource {
             @HeaderParam("Authentication") String sessionToken,
             @PathParam("device") String deviceEUI,
             @PathParam("channel") String channelName,
-            @QueryParam("query") String query) {
+            @QueryParam("query") String query,
+            @QueryParam("zone") String zone) {
         long trackingId = tracing.incrementAndGet();
         String result;
         String userID = null;
@@ -116,7 +119,7 @@ public class ProviderResource {
         List list = service.getDataVer2(userID, deviceEUI, channelName, query);
         long t2 = System.currentTimeMillis();
         LOG.debug("trackingID:" + trackingId + " query [ms]: " + (t2 - t1) + query);
-        result = format(list, "csv");
+        result = formatVer2(list, "csv", zone);
         long t3 = System.currentTimeMillis();
         LOG.debug("trackingID:" + trackingId + " formatting [ms]: " + (t3 - t2));
         LOG.debug("trackingID:" + trackingId + " total [ms]: " + (t3 - t0));
@@ -161,21 +164,22 @@ public class ProviderResource {
             @QueryParam("query") String query) {
         // List result;
         String result;
-        //String userID = null;
-        Token token=null;
+        // String userID = null;
+        Token token = null;
         if (authorizationRequired) {
             token = service.getSessionToken(sessionToken);
-            //userID = service.getUserID(sessionToken);
+            // userID = service.getUserID(sessionToken);
             if (null == token) {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
         }
-        //if (query == null || query.isEmpty() || query.equals("undefined")) {
-            result = format(service.getGroupLastData(token, groupEUI, channelNames, query), "json");
-        //} else {
-            //TODO: is it needed?
-        //    result = format(service.getGroupData(token, groupEUI, channelNames, query), "json");
-        //}
+        // if (query == null || query.isEmpty() || query.equals("undefined")) {
+        result = format(service.getGroupLastData(token, groupEUI, channelNames, query), "json");
+        // } else {
+        // TODO: is it needed?
+        // result = format(service.getGroupData(token, groupEUI, channelNames, query),
+        // "json");
+        // }
         // result = format(service.getGroupData(userID, groupEUI, channelName, query));
 
         return Response.ok(result).build();
@@ -194,13 +198,13 @@ public class ProviderResource {
         return result;
     }
 
-    public String formatVer2(Object o, String type) {
+    public String formatVer2(Object o, String type, String zoneId) {
         if (null == o) {
             return null;
         }
         String result = "";
         if ("csv".equals(type)) {
-            return toCsvVer2((List<List>) o, ",", "\r\n");
+            return toCsvVer2((List<List>) o, ",", "\r\n", zoneId);
         } else {
             result = JsonWriter.objectToJson(o, args);
         }
@@ -216,13 +220,18 @@ public class ProviderResource {
             return "";
         }
         List<List> data = input.get(0);
+        Double value;
         for (int i = 0; i < data.size(); i++) {
             sublist = (List<ChannelData>) data.get(i);
             if (!headerLinePresent) {
                 sb.append("timestamp");
                 for (int j = 0; j < sublist.size(); j++) {
                     cData = sublist.get(j);
-                    sb.append(fieldSeparator).append(cData.getName());
+                    sb.append(fieldSeparator);
+                    value = cData.getValue();
+                    if(value != null){
+                        sb.append(value);
+                    }
                 }
                 sb.append(lineSeparator);
                 headerLinePresent = true;
@@ -238,35 +247,36 @@ public class ProviderResource {
         return sb.toString();
     }
 
-    private String toCsvVer2(List<List> input, String fieldSeparator, String lineSeparator) {
+    private String toCsvVer2(List<List> input, String fieldSeparator, String lineSeparator, String zoneId) {
         StringBuffer sb = new StringBuffer();
-        List<ChannelData> sublist;
-        boolean headerLinePresent = false;
-        ChannelData cData;
+        ChannelData channelData;
         if (input.size() < 1) {
             return "";
         }
-        List<List> data = input.get(0);
-        for (int i = 0; i < data.size(); i++) {
-            sublist = data.get(i);
-            if (!headerLinePresent) {
-                sb.append("timestamp");
-                for (int j = 0; j < sublist.size(); j++) {
-                    cData = sublist.get(j);
-                    sb.append(fieldSeparator).append(cData.getName());
+        // header line
+        sb.append("timestamp");
+        List<ChannelData> dataFromTimestamp = (List<ChannelData>)input.get(0);
+        for (int i = 0; i < dataFromTimestamp.size(); i++) {
+            channelData = dataFromTimestamp.get(i);
+            sb.append(fieldSeparator).append(channelData.getName());
+        }
+        sb.append(lineSeparator);
+        // data lines
+        Double value;
+        for (int i = 0; i < input.size(); i++) {
+            List<ChannelData> data = (List<ChannelData>)input.get(i);
+            sb.append(DateTool.getTimestampAsIsoInstant(data.get(0).getTimestamp(),zoneId));
+            for (int j = 0; j < data.size(); j++) {
+                channelData = data.get(j);
+                sb.append(",");
+                value = channelData.getValue();
+                if(value != null){
+                    sb.append(value);
                 }
-                sb.append(lineSeparator);
-                headerLinePresent = true;
-            }
-            cData = sublist.get(0);
-            sb.append(cData.getTimestamp());
-            for (int j = 0; j < sublist.size(); j++) {
-                cData = sublist.get(j);
-                sb.append(",").append(cData.getValue());
             }
             sb.append(lineSeparator);
         }
         return sb.toString();
-    }
+}
 
 }
