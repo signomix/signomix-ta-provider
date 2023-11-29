@@ -8,10 +8,6 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Observes;
-import javax.inject.Inject;
-
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
@@ -28,6 +24,9 @@ import io.agroal.api.AgroalDataSource;
 import io.quarkus.agroal.DataSource;
 import io.quarkus.cache.CacheResult;
 import io.quarkus.runtime.StartupEvent;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
+import jakarta.inject.Inject;
 
 @ApplicationScoped
 public class ProviderService {

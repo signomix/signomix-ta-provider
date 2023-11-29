@@ -19,12 +19,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.enterprise.context.ApplicationScoped;
-
 import org.jboss.logging.Logger;
 
 import com.cedarsoftware.util.io.JsonWriter;
 import com.signomix.common.iot.ChannelData;
+
+import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
 public class KanarekFormatter {
