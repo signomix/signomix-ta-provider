@@ -76,6 +76,9 @@ public class KanarekFormatter {
                     continue;
                 }
                 cdata = (ChannelData) channels.get(0);
+                if(cdata == null){
+                    continue;
+                }
                 try {
                     kStation.id = Long.parseLong((cdata).getDeviceEUI(), 16);
                 } catch (Exception e) {
@@ -85,6 +88,9 @@ public class KanarekFormatter {
                 for (int j = 0; j < channels.size(); j++) {
                     // kStation.href="";
                     cdata = (ChannelData) channels.get(j);
+                    if(cdata == null){
+                        continue;
+                    }
                     channelName = cdata.getName();
                     switch (channelName.toUpperCase()) {
                         case "LATITUDE":

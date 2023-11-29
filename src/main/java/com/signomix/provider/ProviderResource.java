@@ -76,6 +76,9 @@ public class ProviderResource {
         long t0 = System.currentTimeMillis();
         if (authorizationRequired) {
             Token token = service.getSessionToken(sessionToken);
+            if(null == token){
+                return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
+            }
             userID = token.getUid();
             if (null == userID) {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
@@ -107,7 +110,11 @@ public class ProviderResource {
         String userID = null;
         long t0 = System.currentTimeMillis();
         if (authorizationRequired) {
-            userID = service.getSessionToken(sessionToken).getUid();
+            Token token = service.getSessionToken(sessionToken);
+            if(null == token){
+                return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
+            }
+            userID = token.getUid();
             if (null == userID) {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
@@ -137,7 +144,11 @@ public class ProviderResource {
         String userID = null;
         long t0 = System.currentTimeMillis();
         if (authorizationRequired) {
-            userID = service.getSessionToken(sessionToken).getUid();
+            Token token = service.getSessionToken(sessionToken);
+            if(null == token){
+                return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
+            }
+            userID = token.getUid();
             if (null == userID) {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
