@@ -194,13 +194,50 @@ public class ProviderResource {
         return Response.ok(result).build();
     }
 
+    @Path("/provider/group/{group}/{channel}")
+    @GET
+    @Produces("text/csv")
+    public Response getGroupData2Csv(
+            @HeaderParam("Authentication") String sessionToken,
+            @PathParam("group") String groupEUI,
+            @PathParam("channel") String channelNames,
+            @QueryParam("query") String query,
+            @QueryParam("zone") String zone) {
+
+        String result;
+        Token token = null;
+        if (authorizationRequired) {
+            token = service.getSessionToken(sessionToken);
+            if (null == token) {
+                return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
+            }
+        }
+        List<String> channelNamesList = service.getGroupChannelNames(groupEUI, channelNames, query);
+        List list = service.getGroupData(token, groupEUI, channelNames, query);
+        result = format(list, "csv", channelNamesList, zone);
+        return Response.ok(result).build();
+    }
+
+    public String format(Object o, String type, List<String> channelNamesList, String zoneId) {
+        if (null == o) {
+            return null;
+        }
+        String result = "";
+        if ("csv".equals(type)) {
+            return toCsv((List<List>) o, channelNamesList, ",", "\r\n", zoneId);
+        } else {
+            result = JsonWriter.objectToJson(o, args);
+        }
+        return result;
+    }
+
     public String format(Object o, String type) {
         if (null == o) {
             return null;
         }
         String result = "";
         if ("csv".equals(type)) {
-            return toCsv((List<List>) o, ",", "\r\n");
+            return toCsv((List<List>) o, null, ",", "\r\n", null);
         } else {
             result = JsonWriter.objectToJson(o, args);
         }
@@ -220,38 +257,54 @@ public class ProviderResource {
         return result;
     }
 
-    private String toCsv(List<List> input, String fieldSeparator, String lineSeparator) {
+    private String getHeaderLine(List<String> groupChannelNames, String fieldSeparator, String lineSeparator) {
+        if(groupChannelNames == null){
+            return "";
+        }
         StringBuffer sb = new StringBuffer();
-        List<ChannelData> sublist;
+        sb.append("eui");
+        sb.append(fieldSeparator);
+        sb.append("timestamp");
+        for (String channelName : groupChannelNames) {
+            sb.append(fieldSeparator).append(channelName);
+        }
+        sb.append(lineSeparator);
+        return sb.toString();
+    }
+
+    private String toCsv(List<List> input, List<String> groupChannelNames, String fieldSeparator, String lineSeparator, String zoneId) {
+        StringBuffer sb = new StringBuffer();
+        List<List<ChannelData>> deviceData;
+        List<ChannelData> timestampData;
         boolean headerLinePresent = false;
         ChannelData cData;
         if (input.size() < 1) {
             return "";
         }
-        List<List> data = input.get(0);
-        Double value;
-        for (int i = 0; i < data.size(); i++) {
-            sublist = (List<ChannelData>) data.get(i);
-            if (!headerLinePresent) {
-                sb.append("timestamp");
-                for (int j = 0; j < sublist.size(); j++) {
-                    cData = sublist.get(j);
+        for(int i = 0; i < input.size(); i++){
+            deviceData = input.get(i);
+            for(int j = 0; j < deviceData.size(); j++){
+                timestampData = deviceData.get(j);
+                if (!headerLinePresent) {
+                    sb.append(getHeaderLine(groupChannelNames,fieldSeparator, lineSeparator));
+                    headerLinePresent = true;
+                }
+                for (int k = 0; k < timestampData.size(); k++) {
+                    cData = timestampData.get(k);
+                    if(k==0){
+                        sb.append(cData.getDeviceEUI());
+                        sb.append(fieldSeparator);
+                        sb.append(DateTool.getTimestampAsIsoInstant(cData.getTimestamp(),zoneId));
+                    }
                     sb.append(fieldSeparator);
-                    value = cData.getValue();
-                    if(value != null){
-                        sb.append(value);
+                    if(cData.getValue() != null){
+                        sb.append(cData.getValue());
+                    }else{
+                        sb.append("");
                     }
                 }
                 sb.append(lineSeparator);
-                headerLinePresent = true;
             }
-            cData = sublist.get(0);
-            sb.append(cData.getTimestamp());
-            for (int j = 0; j < sublist.size(); j++) {
-                cData = sublist.get(j);
-                sb.append(",").append(cData.getValue());
-            }
-            sb.append(lineSeparator);
         }
         return sb.toString();
     }

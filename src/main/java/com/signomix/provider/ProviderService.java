@@ -1,6 +1,8 @@
 package com.signomix.provider;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -219,10 +221,26 @@ public class ProviderService {
         return false;
     }
 
+    List<String> getGroupChannelNames(String groupEUI, String channelNames, String query){
+        String[] channels = channelNames.split(",");
+        if(channels.length==1 && "*".equals(channels[0])){
+            ArrayList<String> result = new ArrayList<>();
+            try {
+                dataDao.getGroup(groupEUI).getChannels().keySet().forEach((k)->result.add((String)k));
+            } catch (IotDatabaseException e) {
+                LOG.error(e.getMessage());
+            }
+            return result;
+        }else{
+            return Arrays.asList(channels);
+        }
+        
+    }
+
     // @CacheResult(cacheName = "group-query-cache")
     List getGroupData(Token token, String groupEUI, String channelNames, String query) {
-        LOG.debug("group:" + groupEUI);
-        LOG.debug("channel:" + channelNames);
+        LOG.info("group:" + groupEUI);
+        LOG.info("channel:" + channelNames);
 
         long organizationId = -1;
         // LOG.debug("query:" + query);
