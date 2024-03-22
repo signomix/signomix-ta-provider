@@ -57,9 +57,9 @@ public class ProviderService {
 
     @ConfigProperty(name = "signomix.app.key", defaultValue = "not_configured")
     String appKey;
-    @ConfigProperty(name = "signomix.core.host", defaultValue = "not_configured")
+/*     @ConfigProperty(name = "signomix.core.host", defaultValue = "not_configured")
     String coreHost;
-    @ConfigProperty(name = "signomix.query.limit", defaultValue = "500")
+ */    @ConfigProperty(name = "signomix.query.limit", defaultValue = "500")
     String requestLimitConfigured;
 
     @ConfigProperty(name = "signomix.database.type")
