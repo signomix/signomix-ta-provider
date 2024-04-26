@@ -1,6 +1,5 @@
 package com.signomix.provider;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -20,6 +19,7 @@ import com.signomix.common.db.DataQueryException;
 import com.signomix.common.db.IotDatabaseException;
 import com.signomix.common.db.IotDatabaseIface;
 import com.signomix.common.iot.ChannelData;
+import com.signomix.common.iot.Device;
 import com.signomix.common.iot.DeviceGroup;
 
 import io.agroal.api.AgroalDataSource;
@@ -235,6 +235,15 @@ public class ProviderService {
             return Arrays.asList(channels);
         }
         
+    }
+
+    List<Device> getDevices(String groupEUI){
+        try {
+            return dataDao.getGroupDevices(groupEUI);
+        } catch (IotDatabaseException e) {
+            LOG.error(e.getMessage());
+            return new ArrayList<>();
+        }
     }
 
     // @CacheResult(cacheName = "group-query-cache")

@@ -11,6 +11,7 @@ import com.cedarsoftware.util.io.JsonWriter;
 import com.signomix.common.DateTool;
 import com.signomix.common.Token;
 import com.signomix.common.iot.ChannelData;
+import com.signomix.common.iot.Device;
 
 import io.quarkus.runtime.StartupEvent;
 import io.vertx.mutiny.core.eventbus.EventBus;
@@ -212,19 +213,27 @@ public class ProviderResource {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
         }
+        List<Device> devices = service.getDevices(groupEUI);
+        HashMap<String,String> deviceNames = new HashMap<>();
+        for(Device device : devices){
+            deviceNames.put(device.getEUI(),device.getName());
+        }
         List<String> channelNamesList = service.getGroupChannelNames(groupEUI, channelNames, query);
         List list = service.getGroupData(token, groupEUI, channelNames, query);
-        result = format(list, "csv", channelNamesList, zone);
+        result = format(list, "csv", channelNamesList, deviceNames, zone);
+        list=null;
+        channelNamesList=null;
+        deviceNames=null;
         return Response.ok(result).build();
     }
 
-    public String format(Object o, String type, List<String> channelNamesList, String zoneId) {
+    public String format(Object o, String type, List<String> channelNamesList, HashMap<String,String> deviceNames, String zoneId) {
         if (null == o) {
             return null;
         }
         String result = "";
         if ("csv".equals(type)) {
-            return toCsv((List<List>) o, channelNamesList, ",", "\r\n", zoneId);
+            return toCsv((List<List>) o, channelNamesList, deviceNames, ",", "\r\n", zoneId);
         } else {
             result = JsonWriter.objectToJson(o, args);
         }
@@ -237,7 +246,7 @@ public class ProviderResource {
         }
         String result = "";
         if ("csv".equals(type)) {
-            return toCsv((List<List>) o, null, ",", "\r\n", null);
+            return toCsv((List<List>) o, null, null, ",", "\r\n", null);
         } else {
             result = JsonWriter.objectToJson(o, args);
         }
@@ -257,13 +266,17 @@ public class ProviderResource {
         return result;
     }
 
-    private String getHeaderLine(List<String> groupChannelNames, String fieldSeparator, String lineSeparator) {
+    private String getHeaderLine(List<String> groupChannelNames, HashMap<String,String> deviceNames,  String fieldSeparator, String lineSeparator) {
         if(groupChannelNames == null){
             return "";
         }
         StringBuffer sb = new StringBuffer();
         sb.append("eui");
         sb.append(fieldSeparator);
+        if(deviceNames != null){
+            sb.append("device name");
+            sb.append(fieldSeparator);
+        }
         sb.append("timestamp");
         for (String channelName : groupChannelNames) {
             sb.append(fieldSeparator).append(channelName);
@@ -272,7 +285,7 @@ public class ProviderResource {
         return sb.toString();
     }
 
-    private String toCsv(List<List> input, List<String> groupChannelNames, String fieldSeparator, String lineSeparator, String zoneId) {
+    private String toCsv(List<List> input, List<String> groupChannelNames, HashMap<String,String> deviceNames,  String fieldSeparator, String lineSeparator, String zoneId) {
         StringBuffer sb = new StringBuffer();
         List<List<ChannelData>> deviceData;
         List<ChannelData> timestampData;
@@ -286,7 +299,7 @@ public class ProviderResource {
             for(int j = 0; j < deviceData.size(); j++){
                 timestampData = deviceData.get(j);
                 if (!headerLinePresent) {
-                    sb.append(getHeaderLine(groupChannelNames,fieldSeparator, lineSeparator));
+                    sb.append(getHeaderLine(groupChannelNames, deviceNames, fieldSeparator, lineSeparator));
                     headerLinePresent = true;
                 }
                 for (int k = 0; k < timestampData.size(); k++) {
@@ -294,6 +307,10 @@ public class ProviderResource {
                     if(k==0){
                         sb.append(cData.getDeviceEUI());
                         sb.append(fieldSeparator);
+                        if(deviceNames != null){
+                            sb.append(deviceNames.get(cData.getDeviceEUI()));
+                            sb.append(fieldSeparator);
+                        }
                         sb.append(DateTool.getTimestampAsIsoInstant(cData.getTimestamp(),zoneId));
                     }
                     sb.append(fieldSeparator);
