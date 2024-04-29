@@ -151,14 +151,14 @@ public class ProviderService {
 
     @CacheResult(cacheName = "group-query-cache")
     List getGroupLastData(Token token, String groupEUI, String channelNames, String query) {
-        long secondsBack = 3600;
+        long secondsBack = 3600; // default 1 hour
         if (null != query && !query.isEmpty()) {
             DataQuery dq;
             //LOG.info("query:" + query);
             try {
                 dq = DataQuery.parse(query);
                 if (dq.getOffset() != 0) {
-                    secondsBack = dq.getOffset() / 1000; // offset is in ms
+                    secondsBack = dq.getOffset(); // offset in seconds
                 }
                 //LOG.info("secondsBack:" + secondsBack);
             } catch (DataQueryException ex) {

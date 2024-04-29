@@ -80,7 +80,6 @@ public class GdataResource {
         if (params.length > 1) {
             channels = params[1];
         }
-
         List result = service.getGroupLastData(token, groupID, channels, query);
 
         if (null == format || format.isEmpty()) {
