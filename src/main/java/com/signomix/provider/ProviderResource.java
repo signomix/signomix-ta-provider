@@ -70,14 +70,20 @@ public class ProviderResource {
             @HeaderParam("Authentication") String sessionToken,
             @PathParam("device") String deviceEUI,
             @PathParam("channel") String channelName,
-            @QueryParam("query") String query) {
+            @QueryParam("query") String query,
+            @QueryParam("tid") String tidToken) {
         long trackingId = tracing.incrementAndGet();
         String result;
         String userID = null;
         long t0 = System.currentTimeMillis();
         if (authorizationRequired) {
-            Token token = service.getSessionToken(sessionToken);
-            if(null == token){
+            Token token=null;
+            if (null != sessionToken) {
+                token = service.getSessionToken(sessionToken);
+            } else if (null != tidToken) {
+                token = service.getSessionToken(tidToken);
+            }
+            if (null == token) {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
             userID = token.getUid();
@@ -112,7 +118,7 @@ public class ProviderResource {
         long t0 = System.currentTimeMillis();
         if (authorizationRequired) {
             Token token = service.getSessionToken(sessionToken);
-            if(null == token){
+            if (null == token) {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
             userID = token.getUid();
@@ -146,7 +152,7 @@ public class ProviderResource {
         long t0 = System.currentTimeMillis();
         if (authorizationRequired) {
             Token token = service.getSessionToken(sessionToken);
-            if(null == token){
+            if (null == token) {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
             userID = token.getUid();
@@ -214,20 +220,21 @@ public class ProviderResource {
             }
         }
         List<Device> devices = service.getDevices(groupEUI);
-        HashMap<String,String> deviceNames = new HashMap<>();
-        for(Device device : devices){
-            deviceNames.put(device.getEUI(),device.getName());
+        HashMap<String, String> deviceNames = new HashMap<>();
+        for (Device device : devices) {
+            deviceNames.put(device.getEUI(), device.getName());
         }
         List<String> channelNamesList = service.getGroupChannelNames(groupEUI, channelNames, query);
         List list = service.getGroupData(token, groupEUI, channelNames, query);
         result = format(list, "csv", channelNamesList, deviceNames, zone);
-        list=null;
-        channelNamesList=null;
-        deviceNames=null;
+        list = null;
+        channelNamesList = null;
+        deviceNames = null;
         return Response.ok(result).build();
     }
 
-    public String format(Object o, String type, List<String> channelNamesList, HashMap<String,String> deviceNames, String zoneId) {
+    public String format(Object o, String type, List<String> channelNamesList, HashMap<String, String> deviceNames,
+            String zoneId) {
         if (null == o) {
             return null;
         }
@@ -266,14 +273,15 @@ public class ProviderResource {
         return result;
     }
 
-    private String getHeaderLine(List<String> groupChannelNames, HashMap<String,String> deviceNames,  String fieldSeparator, String lineSeparator) {
-        if(groupChannelNames == null){
+    private String getHeaderLine(List<String> groupChannelNames, HashMap<String, String> deviceNames,
+            String fieldSeparator, String lineSeparator) {
+        if (groupChannelNames == null) {
             return "";
         }
         StringBuffer sb = new StringBuffer();
         sb.append("eui");
         sb.append(fieldSeparator);
-        if(deviceNames != null){
+        if (deviceNames != null) {
             sb.append("device name");
             sb.append(fieldSeparator);
         }
@@ -285,7 +293,8 @@ public class ProviderResource {
         return sb.toString();
     }
 
-    private String toCsv(List<List> input, List<String> groupChannelNames, HashMap<String,String> deviceNames,  String fieldSeparator, String lineSeparator, String zoneId) {
+    private String toCsv(List<List> input, List<String> groupChannelNames, HashMap<String, String> deviceNames,
+            String fieldSeparator, String lineSeparator, String zoneId) {
         StringBuffer sb = new StringBuffer();
         List<List<ChannelData>> deviceData;
         List<ChannelData> timestampData;
@@ -294,9 +303,9 @@ public class ProviderResource {
         if (input.size() < 1) {
             return "";
         }
-        for(int i = 0; i < input.size(); i++){
+        for (int i = 0; i < input.size(); i++) {
             deviceData = input.get(i);
-            for(int j = 0; j < deviceData.size(); j++){
+            for (int j = 0; j < deviceData.size(); j++) {
                 timestampData = deviceData.get(j);
                 if (!headerLinePresent) {
                     sb.append(getHeaderLine(groupChannelNames, deviceNames, fieldSeparator, lineSeparator));
@@ -304,19 +313,19 @@ public class ProviderResource {
                 }
                 for (int k = 0; k < timestampData.size(); k++) {
                     cData = timestampData.get(k);
-                    if(k==0){
+                    if (k == 0) {
                         sb.append(cData.getDeviceEUI());
                         sb.append(fieldSeparator);
-                        if(deviceNames != null){
+                        if (deviceNames != null) {
                             sb.append(deviceNames.get(cData.getDeviceEUI()));
                             sb.append(fieldSeparator);
                         }
-                        sb.append(DateTool.getTimestampAsIsoInstant(cData.getTimestamp(),zoneId));
+                        sb.append(DateTool.getTimestampAsIsoInstant(cData.getTimestamp(), zoneId));
                     }
                     sb.append(fieldSeparator);
-                    if(cData.getValue() != null){
+                    if (cData.getValue() != null) {
                         sb.append(cData.getValue());
-                    }else{
+                    } else {
                         sb.append("");
                     }
                 }
@@ -334,7 +343,7 @@ public class ProviderResource {
         }
         // header line
         sb.append("timestamp");
-        List<ChannelData> dataFromTimestamp = (List<ChannelData>)input.get(0);
+        List<ChannelData> dataFromTimestamp = (List<ChannelData>) input.get(0);
         for (int i = 0; i < dataFromTimestamp.size(); i++) {
             channelData = dataFromTimestamp.get(i);
             sb.append(fieldSeparator).append(channelData.getName());
@@ -343,19 +352,19 @@ public class ProviderResource {
         // data lines
         Double value;
         for (int i = 0; i < input.size(); i++) {
-            List<ChannelData> data = (List<ChannelData>)input.get(i);
-            sb.append(DateTool.getTimestampAsIsoInstant(data.get(0).getTimestamp(),zoneId));
+            List<ChannelData> data = (List<ChannelData>) input.get(i);
+            sb.append(DateTool.getTimestampAsIsoInstant(data.get(0).getTimestamp(), zoneId));
             for (int j = 0; j < data.size(); j++) {
                 channelData = data.get(j);
                 sb.append(",");
                 value = channelData.getValue();
-                if(value != null){
+                if (value != null) {
                     sb.append(value);
                 }
             }
             sb.append(lineSeparator);
         }
         return sb.toString();
-}
+    }
 
 }
