@@ -65,19 +65,22 @@ public class ProviderService {
     @ConfigProperty(name = "signomix.database.type")
     String databaseType;
 
+    @ConfigProperty(name = "questdb.client.config")
+    String questDbConfig;
+
     public void onApplicationStart(@Observes StartupEvent event) {
         if ("postgresql".equalsIgnoreCase(databaseType)) {
             LOG.info("using postgresql database");
             dataDao = new com.signomix.common.tsdb.IotDatabaseDao();
             dataDao.setDatasource(tsDs);
             authDao = new com.signomix.common.tsdb.AuthDao();
-            authDao.setDatasource(tsDs);
+            authDao.setDatasource(tsDs, questDbConfig);
         } else if ("h2".equalsIgnoreCase(databaseType)) {
             LOG.info("using mysql database");
             dataDao = new com.signomix.common.db.IotDatabaseDao();
             dataDao.setDatasource(ds);
             authDao = new com.signomix.common.db.AuthDao();
-            authDao.setDatasource(ds2);
+            authDao.setDatasource(ds2, questDbConfig);
         } else {
             LOG.error("database type not configured");
         }
