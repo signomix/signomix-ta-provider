@@ -18,9 +18,11 @@ import com.signomix.common.db.DataQuery;
 import com.signomix.common.db.DataQueryException;
 import com.signomix.common.db.IotDatabaseException;
 import com.signomix.common.db.IotDatabaseIface;
+import com.signomix.common.db.ReportResult;
 import com.signomix.common.iot.ChannelData;
 import com.signomix.common.iot.Device;
 import com.signomix.common.iot.DeviceGroup;
+import com.signomix.provider.adapter.out.ReportsService;
 
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.agroal.DataSource;
@@ -51,6 +53,9 @@ public class ProviderService {
     @Inject
     @DataSource("oltp")
     AgroalDataSource tsDs;
+
+    @Inject
+    ReportsService reportsService;
 
     IotDatabaseIface dataDao = null;
     AuthDaoIface authDao = null;
@@ -112,11 +117,22 @@ public class ProviderService {
     }
 
     @CacheResult(cacheName = "query-cache")
-    List getData(String userID, String deviceEUI, String channelName, String query) {
+    Object getData(String userID, String deviceEUI, String channelName, String query) {
         LOG.debug("userID:" + userID);
         LOG.debug("device:" + deviceEUI);
         LOG.debug("channel:" + channelName);
         LOG.debug("query:" + query);
+        DataQuery dq;
+        try {
+            dq = DataQuery.parse(query);
+            if(dq.getClassName()!=null){
+                ReportResult report=reportsService.getReport("app_", query);
+                return report;
+            }
+        } catch (DataQueryException ex) {
+            LOG.warn(ex.getMessage());
+            return new ArrayList();
+        }
         try {
             if (channelName != null && !"$".equals(channelName)) {
                 ArrayList result = (ArrayList) dataDao.getValues(userID, deviceEUI,
@@ -133,11 +149,22 @@ public class ProviderService {
     }
 
     @CacheResult(cacheName = "query-cache")
-    List getDataVer2(String userID, String deviceEUI, String channelName, String query) {
+    Object getDataVer2(String userID, String deviceEUI, String channelName, String query) {
         LOG.debug("userID:" + userID);
         LOG.debug("device:" + deviceEUI);
         LOG.debug("channel:" + channelName);
         LOG.debug("query:" + query);
+        DataQuery dq;
+        try {
+            dq = DataQuery.parse(query);
+            if(dq.getClassName()!=null){
+                ReportResult report=reportsService.getReport("app_", query);
+                return report;
+            }
+        } catch (DataQueryException ex) {
+            LOG.warn(ex.getMessage());
+            return new ArrayList();
+        }
         try {
             if (null == channelName || channelName.isEmpty()) {
                 return dataDao.getValues2(userID, deviceEUI, query);
@@ -222,31 +249,6 @@ public class ProviderService {
             }
         }
         return false;
-    }
-
-    List<String> getGroupChannelNames(String groupEUI, String channelNames, String query){
-        String[] channels = channelNames.split(",");
-        if(channels.length==1 && "*".equals(channels[0])){
-            ArrayList<String> result = new ArrayList<>();
-            try {
-                dataDao.getGroup(groupEUI).getChannels().keySet().forEach((k)->result.add((String)k));
-            } catch (IotDatabaseException e) {
-                LOG.error(e.getMessage());
-            }
-            return result;
-        }else{
-            return Arrays.asList(channels);
-        }
-        
-    }
-
-    List<Device> getDevices(String groupEUI){
-        try {
-            return dataDao.getGroupDevices(groupEUI);
-        } catch (IotDatabaseException e) {
-            LOG.error(e.getMessage());
-            return new ArrayList<>();
-        }
     }
 
     // @CacheResult(cacheName = "group-query-cache")
@@ -362,5 +364,30 @@ public class ProviderService {
         t1 = System.currentTimeMillis();
         LOG.debug("normalize time 2:" + (t1 - t0) + " ms");
         return result;
+    }
+
+    List<String> getGroupChannelNames(String groupEUI, String channelNames, String query){
+        String[] channels = channelNames.split(",");
+        if(channels.length==1 && "*".equals(channels[0])){
+            ArrayList<String> result = new ArrayList<>();
+            try {
+                dataDao.getGroup(groupEUI).getChannels().keySet().forEach((k)->result.add((String)k));
+            } catch (IotDatabaseException e) {
+                LOG.error(e.getMessage());
+            }
+            return result;
+        }else{
+            return Arrays.asList(channels);
+        }
+        
+    }
+
+    List<Device> getDevices(String groupEUI){
+        try {
+            return dataDao.getGroupDevices(groupEUI);
+        } catch (IotDatabaseException e) {
+            LOG.error(e.getMessage());
+            return new ArrayList<>();
+        }
     }
 }

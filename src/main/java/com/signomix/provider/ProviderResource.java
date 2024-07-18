@@ -10,6 +10,7 @@ import org.jboss.logging.Logger;
 import com.cedarsoftware.util.io.JsonWriter;
 import com.signomix.common.DateTool;
 import com.signomix.common.Token;
+import com.signomix.common.db.ReportResult;
 import com.signomix.common.iot.ChannelData;
 import com.signomix.common.iot.Device;
 
@@ -93,7 +94,12 @@ public class ProviderResource {
         }
         long t1 = System.currentTimeMillis();
         LOG.debug("trackingID:" + trackingId + " authorization [ms]: " + (t1 - t0));
-        List list = service.getDataVer2(userID, deviceEUI, channelName, query);
+        // REPORTS 
+        Object resultObj = service.getDataVer2(userID, deviceEUI, channelName, query);
+        if(resultObj instanceof ReportResult){
+            return Response.ok((ReportResult) resultObj).build();
+        }
+        List list = (List)resultObj;
         long t2 = System.currentTimeMillis();
         LOG.debug("trackingID:" + trackingId + " query [ms]: " + (t2 - t1) + query);
         result = format(list, "json");
@@ -128,7 +134,7 @@ public class ProviderResource {
         }
         long t1 = System.currentTimeMillis();
         LOG.debug("trackingID:" + trackingId + " authorization [ms]: " + (t1 - t0));
-        List list = service.getDataVer2(userID, deviceEUI, channelName, query);
+        List list = (List)service.getDataVer2(userID, deviceEUI, channelName, query);
         long t2 = System.currentTimeMillis();
         LOG.debug("trackingID:" + trackingId + " query [ms]: " + (t2 - t1) + query);
         result = formatVer2(list, "csv", zone);
@@ -162,7 +168,7 @@ public class ProviderResource {
         }
         long t1 = System.currentTimeMillis();
         LOG.debug("Authorization time [ms]: " + (t1 - t0));
-        List list = service.getData(userID, deviceEUI, channelName, query);
+        List list = (List)service.getData(userID, deviceEUI, channelName, query);
         long t2 = System.currentTimeMillis();
         LOG.debug("DB query time [ms]: " + (t2 - t1) + query);
         result = format(list, "csv");
