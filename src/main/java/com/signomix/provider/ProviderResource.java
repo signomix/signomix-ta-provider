@@ -77,8 +77,9 @@ public class ProviderResource {
         String result;
         String userID = null;
         long t0 = System.currentTimeMillis();
+        Token token=null;
         if (authorizationRequired) {
-            Token token=null;
+            
             if (null != sessionToken) {
                 token = service.getSessionToken(sessionToken);
             } else if (null != tidToken) {
@@ -95,7 +96,7 @@ public class ProviderResource {
         long t1 = System.currentTimeMillis();
         LOG.debug("trackingID:" + trackingId + " authorization [ms]: " + (t1 - t0));
         // REPORTS 
-        Object resultObj = service.getDataVer2(userID, deviceEUI, channelName, query);
+        Object resultObj = service.getDataVer2(token==null?"":token.getToken(),userID, deviceEUI, channelName, query);
         if(resultObj instanceof ReportResult){
             return Response.ok((ReportResult) resultObj).build();
         }
@@ -122,8 +123,9 @@ public class ProviderResource {
         String result;
         String userID = null;
         long t0 = System.currentTimeMillis();
+        Token token=null;
         if (authorizationRequired) {
-            Token token = service.getSessionToken(sessionToken);
+            token = service.getSessionToken(sessionToken);
             if (null == token) {
                 return Response.status(Status.UNAUTHORIZED).entity("not authorized").build();
             }
@@ -134,7 +136,7 @@ public class ProviderResource {
         }
         long t1 = System.currentTimeMillis();
         LOG.debug("trackingID:" + trackingId + " authorization [ms]: " + (t1 - t0));
-        List list = (List)service.getDataVer2(userID, deviceEUI, channelName, query);
+        List list = (List)service.getDataVer2(token==null?"":token.getToken(), userID, deviceEUI, channelName, query);
         long t2 = System.currentTimeMillis();
         LOG.debug("trackingID:" + trackingId + " query [ms]: " + (t2 - t1) + query);
         result = formatVer2(list, "csv", zone);
@@ -168,7 +170,7 @@ public class ProviderResource {
         }
         long t1 = System.currentTimeMillis();
         LOG.debug("Authorization time [ms]: " + (t1 - t0));
-        List list = (List)service.getData(userID, deviceEUI, channelName, query);
+        List list = (List)service.getData(sessionToken, userID, deviceEUI, channelName, query);
         long t2 = System.currentTimeMillis();
         LOG.debug("DB query time [ms]: " + (t2 - t1) + query);
         result = format(list, "csv");

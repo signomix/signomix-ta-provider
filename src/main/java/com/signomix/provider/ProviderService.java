@@ -112,12 +112,12 @@ public class ProviderService {
     }
 
     Token getSessionToken(String sessionToken) {
-        LOG.info("token:" + sessionToken);
+        LOG.debug("token:" + sessionToken);
         return authDao.getToken(sessionToken, sessionTokenLifetime, permanentTokenLifetime);
     }
 
     @CacheResult(cacheName = "query-cache")
-    Object getData(String userID, String deviceEUI, String channelName, String query) {
+    Object getData(String token, String userID, String deviceEUI, String channelName, String query) {
         LOG.debug("userID:" + userID);
         LOG.debug("device:" + deviceEUI);
         LOG.debug("channel:" + channelName);
@@ -126,7 +126,7 @@ public class ProviderService {
         try {
             dq = DataQuery.parse(query);
             if(dq.getClassName()!=null){
-                ReportResult report=reportsService.getReport("app_", query);
+                ReportResult report=reportsService.getReport(token, query);
                 return report;
             }
         } catch (DataQueryException ex) {
@@ -149,7 +149,7 @@ public class ProviderService {
     }
 
     @CacheResult(cacheName = "query-cache")
-    Object getDataVer2(String userID, String deviceEUI, String channelName, String query) {
+    Object getDataVer2(String token, String userID, String deviceEUI, String channelName, String query) {
         LOG.debug("userID:" + userID);
         LOG.debug("device:" + deviceEUI);
         LOG.debug("channel:" + channelName);
@@ -158,7 +158,7 @@ public class ProviderService {
         try {
             dq = DataQuery.parse(query);
             if(dq.getClassName()!=null){
-                ReportResult report=reportsService.getReport("app_", query);
+                ReportResult report=reportsService.getReport(token, query);
                 return report;
             }
         } catch (DataQueryException ex) {
@@ -253,8 +253,8 @@ public class ProviderService {
 
     // @CacheResult(cacheName = "group-query-cache")
     List getGroupData(Token token, String groupEUI, String channelNames, String query) {
-        LOG.info("group:" + groupEUI);
-        LOG.info("channel:" + channelNames);
+        LOG.debug("group:" + groupEUI);
+        LOG.debug("channel:" + channelNames);
 
         long organizationId = -1;
         // LOG.debug("query:" + query);

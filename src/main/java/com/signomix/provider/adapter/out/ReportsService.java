@@ -13,7 +13,9 @@ public class ReportsService {
     public ReportResult getReport(String authentication, String query) {
         // return client.getReport(authentication, query);
         SimpleReportsClient simpleReportsClient = new SimpleReportsClient();
-        String report = simpleReportsClient.getReport("sgx_fc8a0f10069a8381b48b7b00282f3300", query);
+
+        //String report = simpleReportsClient.getReport("sgx_fc8a0f10069a8381b48b7b00282f3300", query);
+        String report = simpleReportsClient.getReport(authentication, query);
         return ReportResult.parse(report);
     }
 

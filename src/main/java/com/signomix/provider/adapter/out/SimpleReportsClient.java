@@ -10,12 +10,17 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.time.Duration;
 
+import org.jboss.logging.Logger;
+
 
 
 
 public class SimpleReportsClient {
 
+    public static Logger logger = Logger.getLogger(SimpleReportsClient.class);
+
     public String getReport(String authentication, String query) {
+        logger.info("getReport authentication token: " + authentication);
         HttpClient client = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_1_1)
                 .followRedirects(HttpClient.Redirect.NORMAL)
@@ -42,8 +47,6 @@ public class SimpleReportsClient {
             e.printStackTrace();
             return null;
         }
-        System.out.println("Status code: " + response.statusCode());
-        System.out.println("Response body: " + response.body());
         return response.body();
     }
 
